@@ -52,7 +52,11 @@ func main() {
 		case update.Message != nil:
 			botInstance.HandleUpdate(update)
 		case update.CallbackQuery != nil:
-			botInstance.HandleCallback(update.CallbackQuery)
+			botInstance.HandleCallbackKeyboard(update.CallbackQuery)
+			botInstance.HandleCallbackOperation(update.CallbackQuery)
+			botInstance.HandleCallbackOrders(update.CallbackQuery)
+			botInstance.HandleCallbackTutorial(update.CallbackQuery)
+			botInstance.HandleCallbackKPI(update.CallbackQuery)
 		}
 	}
 }

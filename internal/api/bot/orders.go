@@ -6,25 +6,23 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/Pavel-Sergeev-ekb/JARVIS_tg-Bot/internal/api/database"
 	"github.com/Pavel-Sergeev-ekb/JARVIS_tg-Bot/internal/config"
+	"github.com/olekukonko/tablewriter"
+	"github.com/olekukonko/tablewriter/renderer"
 )
 
 type OrderStatus struct {
 	statusID   int
-	statusCode int
+	statusCode string
 	statusName string
 	statusText string
 }
 
-func (b *Bot) CreatedExt(chatID int64, statusID string) error {
-
-	if statusID == "" {
-		b.SendMessage(chatID, "Ошибка: не указан идентификатор статуса")
-		return fmt.Errorf("пустой идентификатор статуса")
-	}
-
+// Общая функция для получения информации о статусе заказа
+func (b *Bot) getOrderStatusInfo(chatID int64, statusID string) error {
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		log.Fatal(err)
@@ -41,10 +39,10 @@ func (b *Bot) CreatedExt(chatID int64, statusID string) error {
 
 	query := `
     SELECT 
-    status_id,
-    status_code,
-    status_name,
-    status_text
+        status_id,
+        status_code,
+        status_name,
+        status_text
     FROM order_status
     WHERE status_id = $1
     `
@@ -57,24 +55,66 @@ func (b *Bot) CreatedExt(chatID int64, statusID string) error {
 		&data.statusText,
 	)
 
+	if errors.Is(err, sql.ErrNoRows) {
+		b.SendMessage(chatID, "Данные не найдены")
+		return fmt.Errorf("данные не найдены: %w", err)
+	}
+
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			b.SendMessage(chatID, "Данные не найдены")
-			return fmt.Errorf("данные не найдены: %w", err)
-		}
 		log.Printf("Ошибка при выполнении запроса: %v", err)
 		b.SendMessage(chatID, "Произошла ошибка при получении данных")
 		return err
 	}
 
-	message := fmt.Sprintf(
-		"Код статуса: %d\n"+
-			"Название: %s\n"+
-			"Описание: %s\n",
-		data.statusCode,
-		data.statusName,
-		data.statusText,
+	// Создаем таблицу
+	var buf strings.Builder
+	table := tablewriter.NewTable(&buf,
+		tablewriter.WithRenderer(renderer.NewMarkdown()),
 	)
-	b.SendMessage(chatID, message)
+
+	// Настраиваем внешний вид таблицы
+	//table.Header([]string{"Код статуса", "Название", "Описание"})
+
+	// Добавляем данные
+	table.Append([]string{"Код статуса", data.statusCode})
+	table.Append([]string{"Название cтатуса", data.statusName})
+	table.Append([]string{"Описание статуса", data.statusText})
+
+	// Рендерим таблицу
+	table.Bulk(data)
+	table.Render()
+
+	b.SendMessage(chatID, buf.String())
 	return nil
+}
+
+func (b *Bot) createdExt(chatID int64) error {
+	return b.getOrderStatusInfo(chatID, "3")
+}
+func (b *Bot) released(chatID int64) error {
+	return b.getOrderStatusInfo(chatID, "4")
+}
+func (b *Bot) sorted(chatID int64) error {
+	return b.getOrderStatusInfo(chatID, "6")
+}
+func (b *Bot) packed(chatID int64) error {
+	return b.getOrderStatusInfo(chatID, "7")
+}
+func (b *Bot) sortedSD(chatID int64) error {
+	return b.getOrderStatusInfo(chatID, "8")
+}
+
+func (b *Bot) shipment(chatID int64) error {
+	return b.getOrderStatusInfo(chatID, "9")
+}
+func (b *Bot) KIZ(chatID int64) error {
+	return b.getOrderStatusInfo(chatID, "2")
+}
+
+func (b *Bot) selectionCompleted(chatID int64) error {
+	return b.getOrderStatusInfo(chatID, "5")
+}
+
+func (b *Bot) Unknown(chatID int64) error {
+	return b.getOrderStatusInfo(chatID, "1")
 }
