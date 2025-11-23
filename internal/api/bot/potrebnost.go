@@ -22,6 +22,10 @@ type ShiftData struct {
 }
 
 func (b *Bot) startNeedReport(chatID int64) {
+	if _, inProgress := b.waitingForNeedInput[chatID]; inProgress {
+		b.BotAPI.Send(tgbotapi.NewMessage(chatID, "Завершите текущий отчёт!"))
+		return
+	}
 	b.needData[chatID] = &NeedReport{}
 	b.waitingForNeedInput[chatID] = "total_drop"
 
@@ -34,25 +38,45 @@ func (b *Bot) processNeedInput(chatID int64, stage, text string) {
 
 	switch stage {
 	case "total_drop":
-		data.TotalDrop, _ = strconv.Atoi(text)
-		b.sendDayShiftPrompt(chatID)
+		if num, err := strconv.Atoi(text); err == nil && num > 0 {
+			data.TotalDrop = num
+			b.sendDayShiftPrompt(chatID)
+		} else {
+			b.SendMessage(chatID, "Ошибка: введите положительное число!", tgbotapi.ModeHTML)
+		}
 
 	case "day_pick":
-		data.DayShift.Pick, _ = strconv.Atoi(text)
-		b.sendNextDayShiftPrompt(chatID, "pack")
+		if num, err := strconv.Atoi(text); err == nil && num >= 0 {
+			data.DayShift.Pick = num
+			b.sendNextDayShiftPrompt(chatID, "pack")
+		} else {
+			b.SendMessage(chatID, "Ошибка: введите число ≥ 0!", tgbotapi.ModeHTML)
+		}
 
 	case "day_pack":
-		data.DayShift.Pack, _ = strconv.Atoi(text)
-		b.sendNextDayShiftPrompt(chatID, "sort")
+		if num, err := strconv.Atoi(text); err == nil && num >= 0 {
+			data.DayShift.Pack = num
+			b.sendNextDayShiftPrompt(chatID, "sort")
+		} else {
+			b.SendMessage(chatID, "Ошибка: введите число ≥ 0!", tgbotapi.ModeHTML)
+		}
 
 	case "day_sort":
-		data.DayShift.Sort, _ = strconv.Atoi(text)
-		b.askActualStaff(chatID) // переходим к запросу фактического штата
+		if num, err := strconv.Atoi(text); err == nil && num >= 0 {
+			data.DayShift.Sort = num
+			b.askActualStaff(chatID) // переходим к запросу фактического штата
+		} else {
+			b.SendMessage(chatID, "Ошибка: введите число ≥ 0!", tgbotapi.ModeHTML)
+		}
 
 	case "actual_staff":
-		data.ActualStaff, _ = strconv.Atoi(text)
-		b.calculateNightShift(data) // рассчитываем ночную смену
-		b.generateAndSendNeedReport(chatID)
+		if num, err := strconv.Atoi(text); err == nil && num >= 0 {
+			data.ActualStaff = num
+			b.calculateNightShift(data) // рассчитываем ночную смену
+			b.generateAndSendNeedReport(chatID)
+		} else {
+			b.SendMessage(chatID, "Ошибка: введите число ≥ 0!", tgbotapi.ModeHTML)
+		}
 	}
 }
 func (b *Bot) calculateNightShift(data *NeedReport) {
@@ -89,25 +113,43 @@ func (b *Bot) generateAndSendNeedReport(chatID int64) {
 	totalStaff := data.NightShift.Staff
 	shortage := totalStaff - float64(data.ActualStaff)
 
-	report := fmt.Sprintf(`<b>ОТЧЁТ ПО ПОТРЕБНОСТИ В ПЕРСОНАЛЕ</b>\n\n`+
-		`<b>Общее падение:</b> %d шт.\n\n`+
-		`<u>Дневная смена:</u>\n`+
-		`- Отбор: %d шт.\n`+
-		`- Упаковка: %d шт.\n`+
-		`- Сортировка: %d шт.\n\n`+
-		`<u>Ночная смена (план для достижения остатков):</u>\n`+
-		`- Отбор: %d шт. (чтобы осталось <b>0</b>)\n`+
-		`- Упаковка: %d шт. (чтобы осталось <b>1 000</b>)\n`+
-		`- Сортировка: %d шт. (чтобы осталось <b>3 000</b>)\n\n`+
-		`<b>Итого потребность (ночная смена):</b> %.1f чел.\n`+
-		`<b>Фактически заявлено:</b> %d чел.\n`+
-		`<b>Необходимо добавить:</b> <u>+%.1f чел.</u>`,
+	report := fmt.Sprintf(`<b>ОТЧЁТ ПО ПОТРЕБНОСТИ В ПЕРСОНАЛЕ</b>
+	───────────────────────────────────────────────
+
+		<b>Общее падение:</b> %dшт.
+
+		<b>Дневная смена:</b>
+
+		 - Отбор: <b>%dшт.</b>
+		 - Упаковка: <b>%dшт.</b>
+		- Сортировка: <b>%dшт.</b>
+
+
+		<b>Ночная смена (план для достижения остатков):</b>
+
+		- Отбор: <b>%dшт.</b> (чтобы осталось <b>0</b>)
+		- Упаковка: <b>%dшт.</b> (чтобы осталось <b>1000</b>)
+		- Сортировка: <b>%dшт.</b> (чтобы осталось <b>3000</b>)
+
+
+		<b>Итого потребность (ночная смена):</b> %.1fчел.
+
+		<b>Фактически заявлено:</b> %dчел.
+
+		<b>Необходимо добавить:</b> <b>+%.1fчел.</b>`,
 		data.TotalDrop,
 		data.DayShift.Pick, data.DayShift.Pack, data.DayShift.Sort,
 		data.NightShift.Pick, data.NightShift.Pack, data.NightShift.Sort,
 		totalStaff, data.ActualStaff, shortage)
 
 	b.SendMessage(chatID, report, tgbotapi.ModeHTML)
+
+	msg := tgbotapi.NewMessage(chatID, "Выбери раздел:")
+	msg.ReplyMarkup = NewMainKeyboard()
+	b.BotAPI.Send(msg)
+
+	delete(b.waitingForNeedInput, chatID)
+	delete(b.needData, chatID)
 }
 
 func (b *Bot) sendDayShiftPrompt(chatID int64) {

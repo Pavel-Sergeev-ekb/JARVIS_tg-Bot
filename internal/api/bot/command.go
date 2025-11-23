@@ -48,6 +48,12 @@ func (b *Bot) HandleUpdate(update tgbotapi.Update) {
 	}
 
 	text := update.Message.Text
+	stage, isWaiting := b.waitingForNeedInput[chatID]
+	if isWaiting {
+		b.processNeedInput(chatID, stage, text)
+		return // Завершаем обработку — дальше не идём
+	}
+
 	kpiID, ok := b.waitingForKPIInput[chatID]
 
 	if ok {
@@ -225,6 +231,10 @@ func (b *Bot) HandleCallbackKeyboard(callback *tgbotapi.CallbackQuery) {
 		msg := tgbotapi.NewMessage(chatID, "Выбери раздел: ")
 		msg.ReplyMarkup = NewWavesKeyboard()
 		b.BotAPI.Send(msg)
+
+	case "needAK":
+		b.startNeedReport(chatID)
+
 	case "binding":
 		msg := tgbotapi.NewMessage(chatID, "Выбери раздел: ")
 		msg.ReplyMarkup = NewBindKeyboard()
