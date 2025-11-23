@@ -16,6 +16,8 @@ type Bot struct {
 	waitingForFirstFile  map[int64]bool
 	waitingForSecondFile map[int64]bool
 	tempFilePaths        map[int64]map[int]string
+	waitingForNeedInput  map[int64]string
+	needData             map[int64]*NeedReport
 }
 
 const TargetChatID int64 = -5016795698
@@ -28,6 +30,8 @@ func NewOneBot(botAPI *tgbotapi.BotAPI) *Bot {
 		waitingForFirstFile:  make(map[int64]bool),
 		waitingForSecondFile: make(map[int64]bool),
 		tempFilePaths:        make(map[int64]map[int]string),
+		waitingForNeedInput:  make(map[int64]string),
+		needData:             make(map[int64]*NeedReport),
 	}
 }
 
@@ -77,7 +81,7 @@ func (b *Bot) handleCommand(chatID int64, msg *tgbotapi.Message) {
 	case "hourlyReport":
 		b.waitingForFirstFile[chatID] = true   // Ждём первый файл
 		b.waitingForSecondFile[chatID] = false // Сбрасываем ожидание второго
-		b.SendMessage(chatID, "Отправьте первый Excel‑файл Точек Контроля")
+		b.SendMessage(chatID, "Отправьте первый Excel‑файл Точек Контроля", tgbotapi.ModeHTML)
 	default:
 		b.DefaultCommand(chatID, msg.Text)
 	}
@@ -95,13 +99,13 @@ func (b *Bot) HandleFile(update tgbotapi.Update) {
 
 		err := b.downloadTelegramFile(chatID, doc, 0)
 		if err != nil {
-			b.SendMessage(chatID, "Ошибка сохранения первого файла")
+			b.SendMessage(chatID, "Ошибка сохранения первого файла", tgbotapi.ModeHTML)
 			return
 		}
 
 		b.waitingForFirstFile[chatID] = false
 		b.waitingForSecondFile[chatID] = true
-		b.SendMessage(chatID, "Отправьте второй Excel‑файл Точек Контроля")
+		b.SendMessage(chatID, "Отправьте второй Excel‑файл Точек Контроля", tgbotapi.ModeHTML)
 
 	} else if b.waitingForSecondFile[chatID] {
 		// Инициализируем внутреннюю мапу, если её нет
@@ -111,15 +115,15 @@ func (b *Bot) HandleFile(update tgbotapi.Update) {
 
 		err := b.downloadTelegramFile(chatID, doc, 1)
 		if err != nil {
-			b.SendMessage(chatID, "Ошибка сохранения второго файла")
+			b.SendMessage(chatID, "Ошибка сохранения второго файла", tgbotapi.ModeHTML)
 			return
 		}
 
 		err = b.sendReport(TargetChatID)
 		if err != nil {
-			b.SendMessage(chatID, fmt.Sprintf("Ошибка отправки отчёта: %v", err))
+			b.SendMessage(chatID, fmt.Sprintf("Ошибка отправки отчёта: %v", err), tgbotapi.ModeHTML)
 		} else {
-			b.SendMessage(chatID, "Отчёт сформирован и отправлен в общий чат!")
+			b.SendMessage(chatID, "Отчёт сформирован и отправлен в общий чат!", tgbotapi.ModeHTML)
 		}
 
 		b.waitingForFirstFile[chatID] = false
@@ -138,8 +142,14 @@ func (b *Bot) SendGreetingKeyboard(chatID int64) {
 	}
 }
 
-func (b *Bot) SendMessage(chatID int64, text string) error {
+func (b *Bot) SendMessage(chatID int64, text string, parseMode string) error {
 	msg := tgbotapi.NewMessage(chatID, text)
+
+	// Если указан parseMode, применяем его
+	if parseMode != "" {
+		msg.ParseMode = parseMode
+	}
+
 	_, err := b.BotAPI.Send(msg)
 	if err != nil {
 		log.Printf("Ошибка при отправке сообщения: %v", err)
@@ -155,7 +165,7 @@ func (b *Bot) StartCommand(msg *tgbotapi.Message) {
 		"Приступим?"
 
 	// Отправляем приветственное сообщение
-	b.SendMessage(msg.Chat.ID, text)
+	b.SendMessage(msg.Chat.ID, text, tgbotapi.ModeHTML)
 
 	// Сохраняем пользователя в БД
 	err := database.SaveUser(msg.Chat.ID, msg.From.UserName)
@@ -165,13 +175,13 @@ func (b *Bot) StartCommand(msg *tgbotapi.Message) {
 			msg.Chat.ID, msg.From.UserName, err)
 
 		// Опционально: уведомляем пользователя о проблеме
-		b.SendMessage(msg.Chat.ID, "Произошла ошибка при сохранении ваших данных. Попробуйте позже.")
+		b.SendMessage(msg.Chat.ID, "Произошла ошибка при сохранении ваших данных. Попробуйте позже.", tgbotapi.ModeHTML)
 	}
 }
 
 func (b *Bot) DefaultCommand(chatID int64, t string) {
 	text := "Ты что - то нажмякал, ничего не разобрать, напиши /help, чтобы увидеть доступные варианты"
-	b.SendMessage(chatID, text)
+	b.SendMessage(chatID, text, tgbotapi.ModeHTML)
 }
 
 func (b *Bot) HandleTextMessage(chatID int64, text string) {
@@ -180,13 +190,13 @@ func (b *Bot) HandleTextMessage(chatID int64, text string) {
 
 	switch text {
 	case "привет", "здарова", "хей", "хай", "хелло":
-		b.SendMessage(chatID, "Привет, коллега, чем могу помочь?")
+		b.SendMessage(chatID, "Привет, коллега, чем могу помочь?", tgbotapi.ModeHTML)
 
 	case "как дела?", "как ты?":
-		b.SendMessage(chatID, "О, все здорово! А у вас как дела?")
+		b.SendMessage(chatID, "О, все здорово! А у вас как дела?", tgbotapi.ModeHTML)
 
 	default:
-		b.SendMessage(chatID, "Пока что я только учусь, не понимаю о чем ты говоришь...")
+
 	}
 }
 
@@ -225,15 +235,14 @@ func (b *Bot) HandleCallbackKeyboard(callback *tgbotapi.CallbackQuery) {
 		b.BotAPI.Send(msg)
 
 	case "back_to_autostart":
-		b.SendMessage(chatID, "Выбери раздел меню:")
-		msg := tgbotapi.NewMessage(chatID, "")
+		msg := tgbotapi.NewMessage(chatID, "Выбери раздел меню:")
 		msg.ReplyMarkup = NewWMSMenu()
 		b.BotAPI.Send(msg)
 
 	case "hourlyReport":
 		b.waitingForFirstFile[chatID] = true   // Ждём первый файл
 		b.waitingForSecondFile[chatID] = false // Сбрасываем ожидание второго
-		b.SendMessage(chatID, "Отправьте первый Excel‑файл Точек Контроля")
+		b.SendMessage(chatID, "Отправьте первый Excel‑файл Точек Контроля", tgbotapi.ModeHTML)
 
 	case "back":
 		msg := tgbotapi.NewMessage(chatID, "Командир! Чем могу помочь?")
@@ -309,6 +318,22 @@ func (b *Bot) HandleCallbackKeyboard(callback *tgbotapi.CallbackQuery) {
 		b.HandLetGoInfo(chatID, "")
 		msg := tgbotapi.NewMessage(chatID, "Выбери раздел")
 		msg.ReplyMarkup = NewLaunchKeyboard()
+		b.BotAPI.Send(msg)
+
+	case "links":
+		msg := tgbotapi.NewMessage(chatID, "Выбери раздел: ")
+		msg.ReplyMarkup = NewLinkMenu()
+		b.BotAPI.Send(msg)
+
+	case "reply":
+		msg := tgbotapi.NewMessage(chatID, "Выбери нужный отчет: ")
+		msg.ReplyMarkup = NewReplyMenu()
+		b.BotAPI.Send(msg)
+
+	case "tickets":
+		b.LinksInfo(chatID, "")
+		msg := tgbotapi.NewMessage(chatID, "Выбери нужный раздел")
+		msg.ReplyMarkup = NewLinkMenu()
 		b.BotAPI.Send(msg)
 
 	default:
@@ -615,7 +640,7 @@ func (b *Bot) HandleCallbackTutorial(callback *tgbotapi.CallbackQuery) {
 	case "dashboards":
 		b.DashInfo(chatID, "")
 		msg := tgbotapi.NewMessage(chatID, "Для того, чтобы преуспеть, мы первым делом должны верить, что мы можем. — Никос Казантзакис.")
-		msg.ReplyMarkup = NewTutorialKeyboard()
+		msg.ReplyMarkup = NewLinkMenu()
 		b.BotAPI.Send(msg)
 
 	case "alarm":
@@ -705,7 +730,7 @@ func (b *Bot) HandleCallbackTutorial(callback *tgbotapi.CallbackQuery) {
 	case "formsOT":
 		b.FormsOT(chatID, "")
 		msg := tgbotapi.NewMessage(chatID, "Успех — это сумма мелких усилий, повторяющихся день за днем. — Роберт Кольер.")
-		msg.ReplyMarkup = NewTutorialKeyboard()
+		msg.ReplyMarkup = NewLinkMenu()
 		b.BotAPI.Send(msg)
 
 	case "ekb":

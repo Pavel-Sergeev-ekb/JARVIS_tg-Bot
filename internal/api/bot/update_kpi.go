@@ -18,14 +18,14 @@ func (b *Bot) updateKPI(chatID int64, name string, newIndicator float64, newWeig
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		log.Printf("Ошибка загрузки конфигурации: %v", err)
-		b.SendMessage(chatID, "Произошла ошибка при загрузке конфигурации")
+		b.SendMessage(chatID, "Произошла ошибка при загрузке конфигурации", tgbotapi.ModeHTML)
 		return err
 	}
 
 	db, err := database.ConnectDB(cfg)
 	if err != nil {
 		log.Printf("Ошибка подключения к БД: %v", err)
-		b.SendMessage(chatID, "Произошла ошибка при подключении к базе данных")
+		b.SendMessage(chatID, "Произошла ошибка при подключении к базе данных", tgbotapi.ModeHTML)
 		return err
 	}
 	defer db.Close(context.Background())
@@ -51,25 +51,26 @@ func (b *Bot) updateKPI(chatID int64, name string, newIndicator float64, newWeig
 	)
 	if err != nil {
 		log.Printf("Ошибка при выполнении UPDATE-запроса: %v", err)
-		b.SendMessage(chatID, "Произошла ошибка при обновлении данных")
+		b.SendMessage(chatID, "Произошла ошибка при обновлении данных", tgbotapi.ModeHTML)
 		return err
 	}
 
 	// Проверяем, сколько строк было обновлено
 	rowsAffected := result.RowsAffected()
 	if rowsAffected == 0 {
-		b.SendMessage(chatID, fmt.Sprintf("Показатель с ID %s не найден", name))
+		msg := fmt.Sprintf("Показатель с ID %s не найден", name)
+		b.SendMessage(chatID, msg, tgbotapi.ModeHTML)
 		return fmt.Errorf("показатель не найден в базе данных")
 	}
 
 	// Формируем сообщение об успешном обновлении
 	message := fmt.Sprintf(
-		"Показатель %s успешно обновлён:\n"+
-			"• Новый показатель: %v\n"+
-			"• Новый вес: %v%%",
+		"Показатель <b>%s</b> успешно обновлён:\n"+
+			"• Новый показатель: <b>%v</b>\n"+
+			"• Новый вес: <b>%v%%</b>",
 		name, newIndicator, newWeight,
 	)
-	b.SendMessage(chatID, message)
+	b.SendMessage(chatID, message, tgbotapi.ModeHTML)
 	msg := tgbotapi.NewMessage(chatID, "Выбери должность")
 	msg.ReplyMarkup = NewKPIKeyboard()
 	b.BotAPI.Send(msg)
@@ -81,7 +82,7 @@ func (b *Bot) handleUpdateInput(chatID int64, message string, kpiID string) erro
 	// Разбиваем входное сообщение по запятой
 	parts := strings.Split(message, ",")
 	if len(parts) != 2 {
-		b.SendMessage(chatID, "Неверный формат ввода. Напишите числа через запятую: показатель, вес (например: 98.5, 30)")
+		b.SendMessage(chatID, "Неверный формат ввода. Напишите числа через запятую: показатель, вес (например: 98.5, 30)", tgbotapi.ModeHTML)
 		return errors.New("неверный формат входных данных")
 	}
 
@@ -91,13 +92,13 @@ func (b *Bot) handleUpdateInput(chatID int64, message string, kpiID string) erro
 
 	newIndicator, err := strconv.ParseFloat(indicatorStr, 64)
 	if err != nil {
-		b.SendMessage(chatID, "Ошибка: показатель должен быть числом.")
+		b.SendMessage(chatID, "Ошибка: показатель должен быть числом.", tgbotapi.ModeHTML)
 		return err
 	}
 
 	newWeight, err := strconv.Atoi(weightStr)
 	if err != nil || newWeight < 0 || newWeight > 100 {
-		b.SendMessage(chatID, "Ошибка: вес должен быть целым числом от 0 до 100.")
+		b.SendMessage(chatID, "Ошибка: вес должен быть целым числом от 0 до 100.", tgbotapi.ModeHTML)
 		return err
 	}
 
@@ -106,12 +107,13 @@ func (b *Bot) handleUpdateInput(chatID int64, message string, kpiID string) erro
 }
 func (b *Bot) HandleUpdateButton(chatID int64, kpiID string) {
 	// Отправляем запрос на ввод данных
-	b.SendMessage(chatID, fmt.Sprintf(
+	msg := fmt.Sprintf(
 		"Введите новые значения для показателя %s в формате:\n"+
 			"Показатель, Вес (например: 98.5, 30)\n\n"+
 			"Показатель — десятичное или целое число, вес — целое число (0–100).",
 		kpiID,
-	))
+	)
+	b.SendMessage(chatID, msg, tgbotapi.ModeHTML)
 
 	// Сохраняем контекст ожидания в карту
 	b.waitingForKPIInput[chatID] = kpiID

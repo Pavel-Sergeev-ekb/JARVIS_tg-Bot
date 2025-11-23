@@ -52,7 +52,7 @@ type SDData struct {
 func (b *Bot) HandleFileUpload(chatID int64, doc *tgbotapi.Document) {
 	ext := filepath.Ext(doc.FileName)
 	if ext != ".xlsx" && ext != ".xls" {
-		b.SendMessage(chatID, "Поддерживаются только файлы .xlsx и .xls")
+		b.SendMessage(chatID, "Поддерживаются только файлы .xlsx и .xls", tgbotapi.ModeHTML)
 		return
 	}
 
@@ -61,13 +61,13 @@ func (b *Bot) HandleFileUpload(chatID int64, doc *tgbotapi.Document) {
 	file, err := b.BotAPI.GetFile(fileConfig)
 	if err != nil {
 		log.Printf("Ошибка получения файла: %v", err)
-		b.SendMessage(chatID, "Не удалось загрузить файл")
+		b.SendMessage(chatID, "Не удалось загрузить файл", tgbotapi.ModeHTML)
 		return
 	}
 
 	if file.FilePath == "" {
 		log.Printf("Пустой FilePath для file_id=%s", doc.FileID)
-		b.SendMessage(chatID, "Не удалось получить путь к файлу")
+		b.SendMessage(chatID, "Не удалось получить путь к файлу", tgbotapi.ModeHTML)
 		return
 	}
 
@@ -83,7 +83,7 @@ func (b *Bot) HandleFileUpload(chatID int64, doc *tgbotapi.Document) {
 	err = downloadFile(fileURL, tempPath)
 	if err != nil {
 		log.Printf("Ошибка сохранения файла: %v", err)
-		b.SendMessage(chatID, "Не удалось сохранить файл")
+		b.SendMessage(chatID, "Не удалось сохранить файл", tgbotapi.ModeHTML)
 		return
 	}
 
@@ -97,7 +97,7 @@ func (b *Bot) HandleFileUpload(chatID int64, doc *tgbotapi.Document) {
 		b.tempFilePaths[chatID][0] = tempPath
 		b.waitingForFirstFile[chatID] = false
 		b.waitingForSecondFile[chatID] = true
-		b.SendMessage(chatID, "Первый файл получен. Отправьте второй Excel-файл.")
+		b.SendMessage(chatID, "Первый файл получен. Отправьте второй Excel-файл.", tgbotapi.ModeHTML)
 	} else if b.waitingForSecondFile[chatID] {
 		b.tempFilePaths[chatID][1] = tempPath
 		b.waitingForSecondFile[chatID] = false
@@ -106,9 +106,9 @@ func (b *Bot) HandleFileUpload(chatID int64, doc *tgbotapi.Document) {
 		report, err := b.generateReport(chatID)
 		if err != nil {
 			log.Printf("Ошибка формирования отчёта: %v", err)
-			b.SendMessage(chatID, "Ошибка при обработке файлов")
+			b.SendMessage(chatID, "Ошибка при обработке файлов", tgbotapi.ModeHTML)
 		} else {
-			b.SendMessage(chatID, report)
+			b.SendMessage(chatID, report, tgbotapi.ModeHTML)
 		}
 
 		// Очищаем временные данные
@@ -117,7 +117,7 @@ func (b *Bot) HandleFileUpload(chatID int64, doc *tgbotapi.Document) {
 		delete(b.waitingForSecondFile, chatID)
 	} else {
 		// Файл отправлен вне ожидаемого контекста
-		b.SendMessage(chatID, "Файл получен, но не ожидается. Используйте команду /hourlyReport для начала загрузки.")
+		b.SendMessage(chatID, "Файл получен, но не ожидается. Используйте команду <b>/hourlyReport</b> для начала загрузки.", tgbotapi.ModeHTML)
 		os.Remove(tempPath) // Удаляем незатребованный файл
 	}
 }
@@ -303,19 +303,29 @@ func (b *Bot) generateReport(chatID int64) (string, error) {
 		report.BacklogSorting +
 		report.UnknownCount
 
-	// Формируем текст отчёта
-	result := fmt.Sprintf(`Часовой отчёт ИСХОД (%s)
----------------------------
-Статус «неизвестно» (-1): %d шт.
-Бэклог пополнения (-3): %d шт.
-Бэклог отбора: %d шт.
-Бэклог отбора КГТ: %d шт.
-Бэклог упаковки: %d шт.
-Бэклог упаковки КГТ: %d шт.
-Бэклог сортировки: %d шт.
-Бэклог по всем статусам до сортировки по СД: %d шт.
-Итого обработано: %d шт.
-Итого падение: %d шт.`,
+		// Формируем текст отчёта
+	result := fmt.Sprintf(`<b>Часовой отчёт ИСХОД (%s)</b>
+───────────────────────────────────────────────
+
+<b>Статус «неизвестно»</b> — <b>%d шт.</b>
+
+<b>Бэклог пополнения</b> — <b>%d шт.</b>
+
+<b>Бэклог отбора</b> — <b>%d шт.</b>
+
+<b>Бэклог отбора КГТ</b> — <b>%d шт.</b>
+
+<b>Бэклог упаковки</b> — <b>%d шт.</b>
+
+<b>Бэклог упаковки КГТ</b> — <b>%d шт.</b>
+
+<b>Бэклог сортировки</b> — <b>%d шт.</b>
+
+<b>Бэклог по всем статусам до сортировки по СД</b> — <b>%d шт.</b>
+
+<b>Итого обработано</b> — <b>%d шт.</b>
+
+<b>Итого падение</b> — <b>%d шт.</b>`,
 		report.Timestamp,
 		report.UnknownCount,
 		report.BacklogReplenishment,
@@ -418,11 +428,6 @@ func readExcelFile(path string) (map[string]SDData, error) {
 	return data, nil
 }
 
-func isTransitSC(code string) bool {
-	return strings.Contains(code, "СЦ_МК_ЕКАТЕРИНБУРГ_ТРАНЗИТ") ||
-		strings.Contains(code, "SC_MK_EKB_TRANSIT")
-}
-
 func (b *Bot) sendReport(chatID int64) error {
 	// 1. Генерируем отчёт из файлов пользователя sourceChatID
 	report, err := b.generateReport(chatID)
@@ -431,7 +436,7 @@ func (b *Bot) sendReport(chatID int64) error {
 	}
 
 	// 2. Отправляем в фиксированный целевой чат
-	err = b.SendMessage(TargetChatID, report)
+	err = b.SendMessage(TargetChatID, report, tgbotapi.ModeHTML)
 	if err != nil {
 		return fmt.Errorf("ошибка отправки отчёта в чат %d: %w", TargetChatID, err)
 	}

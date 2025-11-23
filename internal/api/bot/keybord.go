@@ -15,7 +15,38 @@ func NewMainKeyboard() tgbotapi.InlineKeyboardMarkup {
 			tgbotapi.NewInlineKeyboardButtonData("Нормативы", "standart"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Отчеты", "reply"),
+			tgbotapi.NewInlineKeyboardButtonData("Полезные ссылки", "links"),
+		),
+	)
+}
+
+func NewLinkMenu() tgbotapi.InlineKeyboardMarkup {
+	return tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Борды", "dashboards"),
+			tgbotapi.NewInlineKeyboardButtonData("Тикеты", "tickets"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Основные формы по ОТ", "formsOT"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Назад", "back"),
+		),
+	)
+}
+
+func NewReplyMenu() tgbotapi.InlineKeyboardMarkup {
+	return tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Часовой отчет", "hourlyReport"),
+			tgbotapi.NewInlineKeyboardButtonData("Своевременность", "timeliness"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Потребность", "needAK"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Назад", "back"),
 		),
 	)
 }
@@ -181,7 +212,6 @@ func NewTutorialKeyboard() tgbotapi.InlineKeyboardMarkup {
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Букварь", "primer"),
 			tgbotapi.NewInlineKeyboardButtonData("Отгрузка", "shippedIns"),
-			tgbotapi.NewInlineKeyboardButtonData("Борды", "dashboards"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Транзакции", "transactionIns"),
@@ -196,9 +226,6 @@ func NewTutorialKeyboard() tgbotapi.InlineKeyboardMarkup {
 		),
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Инструктаж ВЭШ", "spichRichtrack"),
-		),
-		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Основные формы по ОТ", "formsOT"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Назад", "back"),

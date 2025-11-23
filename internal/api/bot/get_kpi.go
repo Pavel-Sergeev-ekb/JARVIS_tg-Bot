@@ -10,6 +10,7 @@ import (
 
 	"github.com/Pavel-Sergeev-ekb/JARVIS_tg-Bot/internal/api/database"
 	"github.com/Pavel-Sergeev-ekb/JARVIS_tg-Bot/internal/config"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 type KPI struct {
@@ -25,14 +26,14 @@ func (b *Bot) getKPI(chatID int64, id string) error {
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		log.Printf("Ошибка загрузки конфигурации: %v", err)
-		b.SendMessage(chatID, "Произошла ошибка при загрузке конфигурации")
+		b.SendMessage(chatID, "Произошла ошибка при загрузке конфигурации", tgbotapi.ModeHTML)
 		return err
 	}
 
 	db, err := database.ConnectDB(cfg)
 	if err != nil {
 		log.Printf("Ошибка подключения к БД: %v", err)
-		b.SendMessage(chatID, "Произошла ошибка при подключении к базе данных")
+		b.SendMessage(chatID, "Произошла ошибка при подключении к базе данных", tgbotapi.ModeHTML)
 		return err
 	}
 	defer db.Close(context.Background())
@@ -57,28 +58,29 @@ func (b *Bot) getKPI(chatID int64, id string) error {
 	)
 
 	if errors.Is(err, sql.ErrNoRows) {
-		b.SendMessage(chatID, fmt.Sprintf("Показатель %s не найден", id))
+		msg := fmt.Sprintf("Показатель %s не найден", id)
+		b.SendMessage(chatID, msg, tgbotapi.ModeHTML)
 		return fmt.Errorf("показатель не найден в базе данных: %w", err)
 	}
 
 	if err != nil {
 		log.Printf("Ошибка при выполнении запроса: %v", err)
-		b.SendMessage(chatID, "Произошла ошибка при получении данных")
+		b.SendMessage(chatID, "Произошла ошибка при получении данных", tgbotapi.ModeHTML)
 		return err
 	}
 
 	message := formatKPIMessage(kpi, username)
-	b.SendMessage(chatID, message)
+	b.SendMessage(chatID, message, tgbotapi.ModeHTML)
 	return nil
 }
 
 func formatKPIMessage(kpi KPI, username string) string {
 	return fmt.Sprintf(
-		"Название: %s\n"+
-			"Показатель: %.2f\n"+
-			"Вес: %d%%\n"+
-			"Обновил: %s\n"+
-			"Последнее обновление: %s\n",
+		"<b>Название:</b> <b>%s</b>\n"+
+			"<b>Показатель:</b> <b>%.2f</b>\n"+
+			"<b>Вес:</b> <b>%d%%</b>\n"+
+			"<b>Обновил:</b> <b>%s</b>\n"+
+			"<b>Последнее обновление:</b> <b>%s</b>\n",
 		kpi.name,
 		kpi.indicator,
 		kpi.weight,

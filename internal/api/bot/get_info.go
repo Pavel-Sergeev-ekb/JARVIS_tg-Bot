@@ -9,6 +9,7 @@ import (
 
 	"github.com/Pavel-Sergeev-ekb/JARVIS_tg-Bot/internal/api/database"
 	"github.com/Pavel-Sergeev-ekb/JARVIS_tg-Bot/internal/config"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 type info struct {
@@ -27,7 +28,7 @@ func (b *Bot) getBigInfo(chatID int64, infoKey string) error {
 	db, err := database.ConnectDB(cfg)
 	if err != nil {
 		log.Printf("Ошибка подключения к БД: %v", err)
-		b.SendMessage(chatID, "Произошла ошибка при подключении к базе данных")
+		b.SendMessage(chatID, "Произошла ошибка при подключении к базе данных", tgbotapi.ModeHTML)
 		return err
 	}
 	defer db.Close(context.Background())
@@ -49,22 +50,23 @@ func (b *Bot) getBigInfo(chatID int64, infoKey string) error {
 	)
 
 	if errors.Is(err, sql.ErrNoRows) {
-		b.SendMessage(chatID, fmt.Sprintf("Операция с кодом %s не найдена", infoKey))
+		msg := fmt.Sprintf("Операция с кодом %s не найдена", infoKey)
+		b.SendMessage(chatID, msg, tgbotapi.ModeHTML)
 		return fmt.Errorf("операция не найдена в базе данных: %w", err)
 	}
 
 	if err != nil {
 		log.Printf("Ошибка при выполнении запроса: %v", err)
-		b.SendMessage(chatID, "Произошла ошибка при получении данных")
+		b.SendMessage(chatID, "Произошла ошибка при получении данных", tgbotapi.ModeHTML)
 		return err
 	}
 	message := fmt.Sprintf(
-		"Название: %s\n"+
-			"Описание: %s\n",
+		"<b>Название:</b> <b>%s</b>\n"+
+			"<b>Описание:</b> <b>%s</b>\n",
 		info.name,
 		info.description,
 	)
-	b.SendMessage(chatID, message)
+	b.SendMessage(chatID, message, tgbotapi.ModeHTML)
 	return nil
 }
 
@@ -195,4 +197,8 @@ func (b *Bot) FormsOT(chatID int64, infoKey string) error {
 }
 func (b *Bot) DashInfo(chatID int64, infoKey string) error {
 	return b.getBigInfo(chatID, "45")
+}
+
+func (b *Bot) LinksInfo(chatID int64, infoKey string) error {
+	return b.getBigInfo(chatID, "47")
 }

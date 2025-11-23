@@ -6,12 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"strings"
 
 	"github.com/Pavel-Sergeev-ekb/JARVIS_tg-Bot/internal/api/database"
 	"github.com/Pavel-Sergeev-ekb/JARVIS_tg-Bot/internal/config"
-	"github.com/olekukonko/tablewriter"
-	"github.com/olekukonko/tablewriter/renderer"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 type OrderStatus struct {
@@ -32,7 +30,7 @@ func (b *Bot) getOrderStatusInfo(chatID int64, statusID string) error {
 	db, err := database.ConnectDB(cfg)
 	if err != nil {
 		log.Printf("Ошибка подключения к БД: %v", err)
-		b.SendMessage(chatID, "Произошла ошибка при подключении к базе данных")
+		b.SendMessage(chatID, "Произошла ошибка при подключении к базе данных", tgbotapi.ModeHTML)
 		return err
 	}
 	defer db.Close(context.Background())
@@ -56,36 +54,27 @@ func (b *Bot) getOrderStatusInfo(chatID int64, statusID string) error {
 	)
 
 	if errors.Is(err, sql.ErrNoRows) {
-		b.SendMessage(chatID, "Данные не найдены")
+		b.SendMessage(chatID, "Данные не найдены", tgbotapi.ModeHTML)
 		return fmt.Errorf("данные не найдены: %w", err)
 	}
 
 	if err != nil {
 		log.Printf("Ошибка при выполнении запроса: %v", err)
-		b.SendMessage(chatID, "Произошла ошибка при получении данных")
+		b.SendMessage(chatID, "Произошла ошибка при получении данных", tgbotapi.ModeHTML)
 		return err
 	}
 
-	// Создаем таблицу
-	var buf strings.Builder
-	table := tablewriter.NewTable(&buf,
-		tablewriter.WithRenderer(renderer.NewMarkdown()),
+	message := fmt.Sprintf(
+		"<b>Код статуса:</b> <b>%s</b>\n"+
+			"<b>Название:</b> <b>%s</b>\n"+
+			"<b>Описание:</b> %s\n",
+		data.statusCode,
+		data.statusName,
+		data.statusText,
 	)
-
-	// Настраиваем внешний вид таблицы
-	//table.Header([]string{"Код статуса", "Название", "Описание"})
-
-	// Добавляем данные
-	table.Append([]string{"Код статуса", data.statusCode})
-	table.Append([]string{"Название cтатуса", data.statusName})
-	table.Append([]string{"Описание статуса", data.statusText})
-
-	// Рендерим таблицу
-	table.Bulk(data)
-	table.Render()
-
-	b.SendMessage(chatID, buf.String())
+	b.SendMessage(chatID, message, tgbotapi.ModeHTML)
 	return nil
+
 }
 
 func (b *Bot) createdExt(chatID int64) error {
