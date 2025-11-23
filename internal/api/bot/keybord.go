@@ -11,7 +11,7 @@ func NewMainKeyboard() tgbotapi.InlineKeyboardMarkup {
 			tgbotapi.NewInlineKeyboardButtonData("Туториал", "tutorial"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("KPI", "kpi"),
+			tgbotapi.NewInlineKeyboardButtonData("KPI", "KPI"),
 			tgbotapi.NewInlineKeyboardButtonData("Нормативы", "standart"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
@@ -139,13 +139,27 @@ func NewAutostartKeyboard() tgbotapi.InlineKeyboardMarkup {
 func NewWavesKeyboard() tgbotapi.InlineKeyboardMarkup {
 	return tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Потоварка", "potCons"),
-			tgbotapi.NewInlineKeyboardButtonData("КГТ", "kgt"),
-			tgbotapi.NewInlineKeyboardButtonData("Сингл", "single"),
-			tgbotapi.NewInlineKeyboardButtonData("Станция", "stage"),
+			tgbotapi.NewInlineKeyboardButtonData("Потоварка", "potCons1"),
+			tgbotapi.NewInlineKeyboardButtonData("КГТ", "kgt1"),
+			tgbotapi.NewInlineKeyboardButtonData("Сингл", "single1"),
+			tgbotapi.NewInlineKeyboardButtonData("Станция", "stage1"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Назад", "back"),
+			tgbotapi.NewInlineKeyboardButtonData("Назад", "backToAuto"),
+		),
+	)
+}
+
+func NewBindKeyboard() tgbotapi.InlineKeyboardMarkup {
+	return tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Потоварка", "potCons2"),
+			tgbotapi.NewInlineKeyboardButtonData("КГТ", "kgt2"),
+			tgbotapi.NewInlineKeyboardButtonData("Сингл", "single2"),
+			tgbotapi.NewInlineKeyboardButtonData("Станция", "stage2"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Назад", "backToAuto"),
 		),
 	)
 }
@@ -157,7 +171,7 @@ func NewHoursKeyboard() tgbotapi.InlineKeyboardMarkup {
 			tgbotapi.NewInlineKeyboardButtonData("Время С", "timeWith"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Назад", "back"),
+			tgbotapi.NewInlineKeyboardButtonData("Назад", "backToAuto"),
 		),
 	)
 }
@@ -167,6 +181,7 @@ func NewTutorialKeyboard() tgbotapi.InlineKeyboardMarkup {
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Букварь", "primer"),
 			tgbotapi.NewInlineKeyboardButtonData("Отгрузка", "shippedIns"),
+			tgbotapi.NewInlineKeyboardButtonData("Борды", "dashboards"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Транзакции", "transactionIns"),
@@ -174,10 +189,16 @@ func NewTutorialKeyboard() tgbotapi.InlineKeyboardMarkup {
 		),
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Пополнения", "Replenishments"),
-			tgbotapi.NewInlineKeyboardButtonData("Запирание", "lockingIns"),
+			tgbotapi.NewInlineKeyboardButtonData("Запирание", "lockingINFO"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Навыки и скиллы сотрудников", "skillsPro"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Инструктаж ВЭШ", "spichRichtrack"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Основные формы по ОТ", "formsOT"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Назад", "back"),
@@ -199,7 +220,7 @@ func NewPrimerKeyboard() tgbotapi.InlineKeyboardMarkup {
 		),
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Катофф", "catoff"),
-			tgbotapi.NewInlineKeyboardButtonData("Дейофф", "lockingIns"),
+			tgbotapi.NewInlineKeyboardButtonData("Дейофф", "dayoff"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Сглаженный производ", "smoothed"),
@@ -208,8 +229,12 @@ func NewPrimerKeyboard() tgbotapi.InlineKeyboardMarkup {
 			tgbotapi.NewInlineKeyboardButtonData("Производ отгрузки", "shipmentPro"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Производ входящего", "OpenPro"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Тикет", "ticket"),
 			tgbotapi.NewInlineKeyboardButtonData("Гермес", "germes"),
+			tgbotapi.NewInlineKeyboardButtonData("FTE", "fte"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Изъятие", "withdrawal"),
@@ -308,11 +333,11 @@ func NewKPIKeyboard() tgbotapi.InlineKeyboardMarkup {
 func NewZruKpiKeyboard() tgbotapi.InlineKeyboardMarkup {
 	return tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("% Засылов", "dispatch"),
+			tgbotapi.NewInlineKeyboardButtonData("% Засылов", "dispatchZRU"),
 			tgbotapi.NewInlineKeyboardButtonData("Доля НПО", "npoKPI"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Сглаженный Производ", "smothedkpi"),
+			tgbotapi.NewInlineKeyboardButtonData("Сглаженный Производ", "smoothedkpiZRU"),
 			tgbotapi.NewInlineKeyboardButtonData("% Отмен", "cancelkpi"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
@@ -321,28 +346,161 @@ func NewZruKpiKeyboard() tgbotapi.InlineKeyboardMarkup {
 		),
 
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Обновить", "refresh1"),
-			tgbotapi.NewInlineKeyboardButtonData("Назад", "back"),
+			tgbotapi.NewInlineKeyboardButtonData("ОБНОВИТЬ", "refresh1"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Назад", "backToKPI"),
 		),
 	)
 }
 func NewBrigadirKpiKeyboard() tgbotapi.InlineKeyboardMarkup {
 	return tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("% Засылов", "dispatch"),
+			tgbotapi.NewInlineKeyboardButtonData("% Засылов", "dispatchRU"),
 			tgbotapi.NewInlineKeyboardButtonData("Доля НПО", "npoKPI"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Сглаженный Производ", "smothedkpi"),
+			tgbotapi.NewInlineKeyboardButtonData("Сглаженный Производ", "smoothedkpiRU"),
 			tgbotapi.NewInlineKeyboardButtonData("Производ Исхода", "potokKPI"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Своевременность Отгрузки", "timelinesskpi"),
-			tgbotapi.NewInlineKeyboardButtonData("% Потерь (склад)", "vpKPI"),
+			tgbotapi.NewInlineKeyboardButtonData("% Потерь (склад)", "lostKPI"),
 		),
 
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Обновить", "refresh1"),
+			tgbotapi.NewInlineKeyboardButtonData("ОБНОВИТЬ", "refresh"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Назад", "backToKPI"),
+		),
+	)
+}
+func NewRefreshKpiZRUKeyboard() tgbotapi.InlineKeyboardMarkup {
+	return tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("% Засылов", "dispatchUpZRU"),
+			tgbotapi.NewInlineKeyboardButtonData("Доля НПО", "npoKPIUp"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Сглаженный Производ", "smoothedkpiUpZRU"),
+			tgbotapi.NewInlineKeyboardButtonData("Производ Возвратов", "vpKPIUP"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Своевременность Отгрузки", "timelinesskpiUp"),
+			tgbotapi.NewInlineKeyboardButtonData("% Отмен", "cancelkpiUP"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Назад", "backToKPI"),
+		),
+	)
+}
+func NewRefreshKpiRUKeyboard() tgbotapi.InlineKeyboardMarkup {
+	return tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("% Засылов", "dispatchUpRU"),
+			tgbotapi.NewInlineKeyboardButtonData("Доля НПО", "npoKPIUp"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Сглаженный Производ", "smoothedkpiUpRU"),
+			tgbotapi.NewInlineKeyboardButtonData("Производ Исхода", "potokKPIUp"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Своевременность Отгрузки", "timelinesskpiUp"),
+			tgbotapi.NewInlineKeyboardButtonData("% Потерь (склад)", "lostKPIUp"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Назад", "backToKPI"),
+		),
+	)
+}
+
+func NewStandardKeyboard() tgbotapi.InlineKeyboardMarkup {
+	return tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Отбор MEZ-1", "mez1"),
+			tgbotapi.NewInlineKeyboardButtonData("Отбор MEZ-2", "mez2"),
+			tgbotapi.NewInlineKeyboardButtonData("Отбор MEZ-3", "mez3"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Отбор MEZ-4", "mez4"),
+			tgbotapi.NewInlineKeyboardButtonData("Отбор MEZ-5А", "mez5"),
+			tgbotapi.NewInlineKeyboardButtonData("Спецхран", "specHran"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Отбор КГТ RACK", "selectionKGT"),
+			tgbotapi.NewInlineKeyboardButtonData("Отбор CГТ RACK", "selectionSGT"),
+			tgbotapi.NewInlineKeyboardButtonData("Отбор КГТ Балкон", "selectionBalkon"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Отбор Изъятия", "selectionIZ"),
+			tgbotapi.NewInlineKeyboardButtonData("Cортировка КГТ", "sortKGT"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Потоварная сортировка(упак)", "packPot"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Сортировка СГТ", "sortSGT"),
+			tgbotapi.NewInlineKeyboardButtonData("Сортировка в LOT", "sortLOT"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Размещение для отгрузки", "bufNorm"),
+			tgbotapi.NewInlineKeyboardButtonData("Отгрузка", "shipNorm"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("ОБНОВИТЬ", "refresh3"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Назад", "back"),
+		),
+	)
+}
+
+func NewVashKeyboard() tgbotapi.InlineKeyboardMarkup {
+	return tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Общий спич", "longBriefing"),
+			tgbotapi.NewInlineKeyboardButtonData("Короткий спич 2.0", "shortBriefing"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Назад", "backToTutorial"),
+		),
+	)
+}
+
+func NewStandardRefreshKeyboard() tgbotapi.InlineKeyboardMarkup {
+	return tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Отбор MEZ-1", "mez1UP"),
+			tgbotapi.NewInlineKeyboardButtonData("Отбор MEZ-2", "mez2UP"),
+			tgbotapi.NewInlineKeyboardButtonData("Отбор MEZ-3", "mez3UP"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Отбор MEZ-4", "mez4UP"),
+			tgbotapi.NewInlineKeyboardButtonData("Отбор MEZ-5А", "mez5UP"),
+			tgbotapi.NewInlineKeyboardButtonData("Спецхран", "specHranUP"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Отбор КГТ RACK", "selectionKGTUP"),
+			tgbotapi.NewInlineKeyboardButtonData("Отбор CГТ RACK", "selectionSGTUP"),
+			tgbotapi.NewInlineKeyboardButtonData("Отбор КГТ Балкон", "selectionBalkonUP"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Отбор Изъятия", "selectionIZUP"),
+			tgbotapi.NewInlineKeyboardButtonData("Cортировка КГТ", "sortKGTUP"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Потоварная сортировка(упак)", "packPotUP"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Сортировка СГТ", "sortSGTUP"),
+			tgbotapi.NewInlineKeyboardButtonData("Сортировка в LOT", "sortLOTUP"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Размещение для отгрузки", "bufNormUP"),
+			tgbotapi.NewInlineKeyboardButtonData("Отгрузка", "shipNormUP"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Назад", "back"),
 		),
 	)

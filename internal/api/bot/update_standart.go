@@ -1,0 +1,101 @@
+package bot
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/Pavel-Sergeev-ekb/JARVIS_tg-Bot/internal/api/database"
+	"github.com/Pavel-Sergeev-ekb/JARVIS_tg-Bot/internal/config"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+)
+
+func (b *Bot) UpdateStand(chatID int64, name string, newIndicator float64) error {
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		log.Printf("Ошибка загрузки конфигурации: %v", err)
+		b.SendMessage(chatID, "Произошла ошибка при загрузке конфигурации")
+		return err
+	}
+
+	db, err := database.ConnectDB(cfg)
+	if err != nil {
+		log.Printf("Ошибка подключения к БД: %v", err)
+		b.SendMessage(chatID, "Произошла ошибка при подключении к базе данных")
+		return err
+	}
+	defer db.Close(context.Background())
+
+	// SQL-запрос на обновление
+	query := `
+        UPDATE standart
+        SET indicator = $2, 
+				user_chatid = $3,  
+    		data_at = $4 
+        WHERE name = $1
+    `
+
+	// Выполняем UPDATE
+	result, err := db.Exec(context.Background(),
+		query,
+		name,
+		newIndicator,
+		chatID,
+		time.Now(),
+	)
+	if err != nil {
+		log.Printf("Ошибка при выполнении UPDATE-запроса: %v", err)
+		b.SendMessage(chatID, "Произошла ошибка при обновлении данных")
+		return err
+	}
+
+	// Проверяем, сколько строк было обновлено
+	rowsAffected := result.RowsAffected()
+	if rowsAffected == 0 {
+		b.SendMessage(chatID, fmt.Sprintf("Показатель с ID %s не найден", name))
+		return fmt.Errorf("показатель не найден в базе данных")
+	}
+
+	// Формируем сообщение об успешном обновлении
+	message := fmt.Sprintf(
+		"Показатель %s успешно обновлён:\n"+
+			"• Новый показатель: %v\n",
+		name, newIndicator,
+	)
+	b.SendMessage(chatID, message)
+	msg := tgbotapi.NewMessage(chatID, "Выбери норматив для обновления")
+	msg.ReplyMarkup = NewStandardRefreshKeyboard()
+	b.BotAPI.Send(msg)
+
+	return nil
+}
+
+func (b *Bot) handleUpdateInputStand(chatID int64, message string, standartID string) error {
+	// Очищаем строку от пробелов
+	indicatorStr := strings.TrimSpace(message)
+
+	// Пытаемся преобразовать в число
+	newIndicator, err := strconv.ParseFloat(indicatorStr, 64)
+	if err != nil {
+		b.SendMessage(chatID, "Ошибка: показатель должен быть числом.")
+		return err
+	}
+
+	// Вызываем функцию обновления
+	return b.UpdateStand(chatID, standartID, newIndicator)
+}
+
+func (b *Bot) HandleUpdateButtonStan(chatID int64, standartID string) {
+	// Отправляем запрос на ввод данных
+	b.SendMessage(chatID, fmt.Sprintf(
+		"Введите новое значение для показателя %s в формате целого числа, без точек и запятых",
+		standartID,
+	))
+
+	// Сохраняем контекст ожидания в карту
+	b.waitingForStandInput[chatID] = standartID
+
+}

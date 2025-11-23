@@ -18,6 +18,8 @@ type Config struct {
 	DBName     string
 }
 
+var Cfg Config
+
 func LoadConfig() (Config, error) {
 
 	_, err := os.Stat(".env")

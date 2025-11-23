@@ -57,6 +57,8 @@ func main() {
 			botInstance.HandleCallbackOrders(update.CallbackQuery)
 			botInstance.HandleCallbackTutorial(update.CallbackQuery)
 			botInstance.HandleCallbackKPI(update.CallbackQuery)
+			botInstance.HandleCallbackStandard(update.CallbackQuery)
+
 		}
 	}
 }
