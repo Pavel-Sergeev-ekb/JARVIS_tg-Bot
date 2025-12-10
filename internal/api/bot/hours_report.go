@@ -214,26 +214,27 @@ func (b *Bot) generateReport(chatID int64) (string, error) {
 			continue
 		}
 
-		totalOrdersAll += sdData.TotalOrders
+		totalOrdersAll += sdData.TotalPieces
 
 		for status, statusData := range sdData.StatusData {
-			orders := statusData.Orders
+
+			pieces := statusData.Pieces
 
 			switch status {
 			case "-1":
-				report.UnknownCount += orders
+				report.UnknownCount += pieces
 			case "-3":
-				report.BacklogReplenishment += orders
+				report.BacklogReplenishment += pieces
 			case "02", "29", "52":
-				report.BacklogPickup += orders
+				report.BacklogPickup += pieces
 				report.BacklogPickupKGT += statusData.KGT
 			case "55", "59", "61":
-				report.BacklogPacking += orders
+				report.BacklogPacking += pieces
 				report.BacklogPackingKGT += statusData.KGT
 			case "65":
-				report.BacklogSorting += orders
+				report.BacklogSorting += pieces
 			case "68", "95":
-				report.TotalProcessed += orders
+				report.TotalProcessed += pieces
 			case "98":
 				// Пока не суммируем, сделаем это позже
 			}
@@ -242,29 +243,30 @@ func (b *Bot) generateReport(chatID int64) (string, error) {
 
 	// 2. Обрабатываем второй файл: только транзитный СД
 	if sdData, ok := secondData[transitSDName]; ok {
-		totalOrdersAll += sdData.TotalOrders
+		totalOrdersAll += sdData.TotalPieces
 
 		for status, statusData := range sdData.StatusData {
-			orders := statusData.Orders
+
+			pieces := statusData.Pieces
 
 			// Обрабатываем все статусы (как в первом файле)
 			switch status {
 			case "-1":
-				report.UnknownCount += orders // Теперь учитывается!
+				report.UnknownCount += pieces // Теперь учитывается!
 			case "-3":
-				report.BacklogReplenishment += orders
+				report.BacklogReplenishment += pieces
 			case "02", "29", "52":
-				report.BacklogPickup += orders
+				report.BacklogPickup += pieces
 				report.BacklogPickupKGT += statusData.KGT
 
 			case "55", "59", "61":
-				report.BacklogPacking += orders
+				report.BacklogPacking += pieces
 				report.BacklogPackingKGT += statusData.KGT
 
 			case "65":
-				report.BacklogSorting += orders
+				report.BacklogSorting += pieces
 			case "68", "95":
-				report.TotalProcessed += orders
+				report.TotalProcessed += pieces
 			case "98":
 				// Пока не суммируем, сделаем это позже
 			}
@@ -279,14 +281,14 @@ func (b *Bot) generateReport(chatID int64) (string, error) {
 	for sdName, sdData := range firstData {
 		if requiredSDsFirst[sdName] {
 			if statusData, ok := sdData.StatusData["98"]; ok {
-				total98Orders += statusData.Orders
+				total98Orders += statusData.Pieces
 			}
 		}
 	}
 	// Второй файл
 	if sdData, ok := secondData[transitSDName]; ok {
 		if statusData, ok := sdData.StatusData["98"]; ok {
-			total98Orders += statusData.Orders
+			total98Orders += statusData.Pieces
 		}
 	}
 

@@ -369,7 +369,7 @@ func NewZruKpiKeyboard() tgbotapi.InlineKeyboardMarkup {
 		),
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Своевременность Отгрузки", "timelinesskpi"),
-			tgbotapi.NewInlineKeyboardButtonData("Производ Возвратов", "vpKPI"),
+			tgbotapi.NewInlineKeyboardButtonData("Своевременность приемки и размещения", "vpKPI"),
 		),
 
 		tgbotapi.NewInlineKeyboardRow(

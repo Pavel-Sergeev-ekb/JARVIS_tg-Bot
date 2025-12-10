@@ -38,7 +38,7 @@ func (b *Bot) getBigInfo(chatID int64, infoKey string) error {
         id,
         name,
         description
-    FROM data_desc
+    FROM public.data_desc
     WHERE id = $1
     `
 

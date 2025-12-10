@@ -23,15 +23,15 @@ var Cfg Config
 func LoadConfig() (Config, error) {
 
 	_, err := os.Stat(".env")
-	if os.IsNotExist(err) {
-		return Config{}, fmt.Errorf(".env файл не найден. Создайте его на основе .env.example")
-	}
-
-	err = godotenv.Load(".env")
-
-	if err != nil {
-		log.Fatalf("ошибка загрузки файла .env: %v", err)
-		return Config{}, err
+	if err == nil {
+		// Файл .env найден — загружаем его
+		err = godotenv.Load(".env")
+		if err != nil {
+			return Config{}, fmt.Errorf("ошибка загрузки .env: %v", err)
+		}
+	} else if !os.IsNotExist(err) {
+		// Если ошибка не «файл не найден», а другая (например, права) — сообщаем
+		return Config{}, fmt.Errorf("ошибка проверки .env: %v", err)
 	}
 
 	cfg := Config{
