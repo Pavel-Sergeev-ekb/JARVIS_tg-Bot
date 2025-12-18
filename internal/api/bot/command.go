@@ -1,8 +1,8 @@
 package bot
 
 import (
-	"fmt"
 	"log"
+	"strconv"
 	"strings"
 
 	"github.com/Pavel-Sergeev-ekb/JARVIS_tg-Bot/internal/api/database"
@@ -10,28 +10,36 @@ import (
 )
 
 type Bot struct {
-	BotAPI               *tgbotapi.BotAPI
-	waitingForStandInput map[int64]string
-	waitingForKPIInput   map[int64]string
-	waitingForFirstFile  map[int64]bool
-	waitingForSecondFile map[int64]bool
-	tempFilePaths        map[int64]map[int]string
-	waitingForNeedInput  map[int64]string
-	needData             map[int64]*NeedReport
+	BotAPI                *tgbotapi.BotAPI
+	waitingForStandInput  map[int64]string
+	waitingForKPIInput    map[int64]string
+	waitingForFirstFile   map[int64]bool
+	waitingForSecondFile  map[int64]bool
+	tempFilePaths         map[int64]map[int]string
+	waitingForNeedInput   map[int64]string
+	needData              map[int64]*NeedReport
+	waitingForStaffCount  map[int64]bool
+	waitingForPickedItems map[int64]bool
+	staffCount            map[int64]int
+	pickedItems           map[int64]int
 }
 
 const TargetChatID int64 = -5016795698
 
 func NewOneBot(botAPI *tgbotapi.BotAPI) *Bot {
 	return &Bot{
-		BotAPI:               botAPI,
-		waitingForKPIInput:   make(map[int64]string),
-		waitingForStandInput: make(map[int64]string),
-		waitingForFirstFile:  make(map[int64]bool),
-		waitingForSecondFile: make(map[int64]bool),
-		tempFilePaths:        make(map[int64]map[int]string),
-		waitingForNeedInput:  make(map[int64]string),
-		needData:             make(map[int64]*NeedReport),
+		BotAPI:                botAPI,
+		waitingForKPIInput:    make(map[int64]string),
+		waitingForStandInput:  make(map[int64]string),
+		waitingForFirstFile:   make(map[int64]bool),
+		waitingForSecondFile:  make(map[int64]bool),
+		tempFilePaths:         make(map[int64]map[int]string),
+		waitingForNeedInput:   make(map[int64]string),
+		needData:              make(map[int64]*NeedReport),
+		waitingForStaffCount:  make(map[int64]bool),
+		waitingForPickedItems: make(map[int64]bool),
+		staffCount:            make(map[int64]int),
+		pickedItems:           make(map[int64]int),
 	}
 }
 
@@ -42,28 +50,62 @@ func (b *Bot) HandleUpdate(update tgbotapi.Update) {
 
 	chatID := update.Message.Chat.ID
 
-	if update.Message.Document != nil {
-		b.HandleFileUpload(chatID, update.Message.Document)
+	// 1. Проверяем состояния вопросов (должны идти первыми!)
+	if b.waitingForStaffCount != nil && b.waitingForStaffCount[chatID] {
+		staffCount, err := strconv.Atoi(update.Message.Text)
+		if err != nil {
+			b.SendMessage(chatID, "Введите число!", tgbotapi.ModeHTML)
+			return
+		}
+		b.staffCount[chatID] = staffCount
+		b.waitingForStaffCount[chatID] = false
+		b.waitingForPickedItems[chatID] = true
+		b.SendMessage(chatID, "Укажите количество отобранных товаров за час (Сводка отбора WMS):", tgbotapi.ModeHTML)
 		return
 	}
 
+	if b.waitingForPickedItems != nil && b.waitingForPickedItems[chatID] {
+		pickedItems, err := strconv.Atoi(update.Message.Text)
+		if err != nil {
+			b.SendMessage(chatID, "Пожалуйста, введите число.", tgbotapi.ModeHTML)
+			return
+		}
+		b.pickedItems[chatID] = pickedItems
+		b.waitingForPickedItems[chatID] = false
+
+		b.waitingForFirstFile[chatID] = true
+		b.SendMessage(chatID, "Отправьте первый Excel‑файл Точек Контроля", tgbotapi.ModeHTML)
+		return
+	}
+
+	// 2. Обрабатываем файлы только если ждём их
+	if update.Message.Document != nil {
+		if (b.waitingForFirstFile != nil && b.waitingForFirstFile[chatID]) ||
+			(b.waitingForSecondFile != nil && b.waitingForSecondFile[chatID]) {
+			b.HandleFileUpload(chatID, update.Message.Document)
+			return
+		} else {
+			b.SendMessage(chatID, "Файл получен, но не ожидается. Используйте /hourlyReport для начала.", tgbotapi.ModeHTML)
+			return
+		}
+	}
+
+	// 3. Остальная логика (команды, текст и т.д.)
 	text := update.Message.Text
 	stage, isWaiting := b.waitingForNeedInput[chatID]
 	if isWaiting {
 		b.processNeedInput(chatID, stage, text)
-		return // Завершаем обработку — дальше не идём
+		return
 	}
 
 	kpiID, ok := b.waitingForKPIInput[chatID]
-
 	if ok {
 		delete(b.waitingForKPIInput, chatID)
 		b.handleUpdateInput(chatID, update.Message.Text, kpiID)
-		return // Завершаем метод после обработки ожидаемого ввода
+		return
 	}
 
 	standartID, ok := b.waitingForStandInput[chatID]
-
 	if ok {
 		delete(b.waitingForStandInput, chatID)
 		b.handleUpdateInputStand(chatID, update.Message.Text, standartID)
@@ -72,68 +114,29 @@ func (b *Bot) HandleUpdate(update tgbotapi.Update) {
 
 	if update.Message.IsCommand() {
 		b.handleCommand(chatID, update.Message)
-		return // Завершаем метод после обработки команды
+		return
 	}
 
 	b.SendGreetingKeyboard(chatID)
 	b.HandleTextMessage(chatID, text)
-
 }
 
 func (b *Bot) handleCommand(chatID int64, msg *tgbotapi.Message) {
-	switch msg.Command() {
-	case "start":
+
+	switch {
+	case msg != nil && msg.Command() == "start":
 		b.StartCommand(msg)
-	case "hourlyReport":
-		b.waitingForFirstFile[chatID] = true   // Ждём первый файл
-		b.waitingForSecondFile[chatID] = false // Сбрасываем ожидание второго
-		b.SendMessage(chatID, "Отправьте первый Excel‑файл Точек Контроля", tgbotapi.ModeHTML)
-	default:
-		b.DefaultCommand(chatID, msg.Text)
-	}
-}
-
-func (b *Bot) HandleFile(update tgbotapi.Update) {
-	chatID := update.Message.Chat.ID
-	doc := update.Message.Document
-
-	if b.waitingForFirstFile[chatID] {
-		// Инициализируем внутреннюю мапу, если её нет
-		if b.tempFilePaths[chatID] == nil {
-			b.tempFilePaths[chatID] = make(map[int]string)
+	case (msg != nil && msg.Command() == "hourlyReport") || msg == nil:
+		// Инициализируем состояния
+		if b.waitingForStaffCount == nil {
+			b.waitingForStaffCount = make(map[int64]bool)
+		}
+		if b.waitingForPickedItems == nil {
+			b.waitingForPickedItems = make(map[int64]bool)
 		}
 
-		err := b.downloadTelegramFile(chatID, doc, 0)
-		if err != nil {
-			b.SendMessage(chatID, "Ошибка сохранения первого файла", tgbotapi.ModeHTML)
-			return
-		}
-
-		b.waitingForFirstFile[chatID] = false
-		b.waitingForSecondFile[chatID] = true
-		b.SendMessage(chatID, "Отправьте второй Excel‑файл Точек Контроля", tgbotapi.ModeHTML)
-
-	} else if b.waitingForSecondFile[chatID] {
-		// Инициализируем внутреннюю мапу, если её нет
-		if b.tempFilePaths[chatID] == nil {
-			b.tempFilePaths[chatID] = make(map[int]string)
-		}
-
-		err := b.downloadTelegramFile(chatID, doc, 1)
-		if err != nil {
-			b.SendMessage(chatID, "Ошибка сохранения второго файла", tgbotapi.ModeHTML)
-			return
-		}
-
-		err = b.sendReport(TargetChatID)
-		if err != nil {
-			b.SendMessage(chatID, fmt.Sprintf("Ошибка отправки отчёта: %v", err), tgbotapi.ModeHTML)
-		} else {
-			b.SendMessage(chatID, "Отчёт сформирован и отправлен в общий чат!", tgbotapi.ModeHTML)
-		}
-
-		b.waitingForFirstFile[chatID] = false
-		b.waitingForSecondFile[chatID] = false
+		b.waitingForStaffCount[chatID] = true
+		b.SendMessage(chatID, "Укажите количество сотрудников на потоке:", tgbotapi.ModeHTML)
 	}
 }
 
@@ -250,9 +253,17 @@ func (b *Bot) HandleCallbackKeyboard(callback *tgbotapi.CallbackQuery) {
 		b.BotAPI.Send(msg)
 
 	case "hourlyReport":
-		b.waitingForFirstFile[chatID] = true   // Ждём первый файл
-		b.waitingForSecondFile[chatID] = false // Сбрасываем ожидание второго
-		b.SendMessage(chatID, "Отправьте первый Excel‑файл Точек Контроля", tgbotapi.ModeHTML)
+		if b.waitingForStaffCount == nil {
+			b.waitingForStaffCount = make(map[int64]bool)
+		}
+		if b.waitingForPickedItems == nil {
+			b.waitingForPickedItems = make(map[int64]bool)
+		}
+
+		b.waitingForStaffCount[chatID] = true
+		b.waitingForPickedItems[chatID] = false
+
+		b.SendMessage(chatID, "Укажите количество сотрудников на потоке:", tgbotapi.ModeHTML)
 
 	case "back":
 		msg := tgbotapi.NewMessage(chatID, "Командир! Чем могу помочь?")
