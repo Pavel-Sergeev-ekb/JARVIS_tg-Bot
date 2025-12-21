@@ -206,7 +206,15 @@ func (b *Bot) generateReport(chatID int64) (string, error) {
 		"СЦ МК Екатеринбург": true,
 		"5Post":              true,
 	}
-	transitSDName := "СЦ МК Екатеринбург транзит"
+	requiredSDsSecond := map[string]bool{
+		"СЦ Москва транзит":          true,
+		"СЦ Пермь транзит":           true,
+		"СЦ Челябинск транзит":       true,
+		"СЦ Тюмень транзит":          true,
+		"СЦ Омск транзит":            true,
+		"СЦ Новосибирск транзит":     true,
+		"СЦ МК Екатеринбург транзит": true,
+	}
 
 	var totalOrdersAll int // Общее количество заказов по выбранным СД
 
@@ -218,7 +226,6 @@ func (b *Bot) generateReport(chatID int64) (string, error) {
 		totalOrdersAll += sdData.TotalPieces
 
 		for status, statusData := range sdData.StatusData {
-
 			pieces := statusData.Pieces
 
 			switch status {
@@ -242,11 +249,14 @@ func (b *Bot) generateReport(chatID int64) (string, error) {
 		}
 	}
 
-	if sdData, ok := secondData[transitSDName]; ok {
+	for sdName, sdData := range secondData {
+		if !requiredSDsSecond[sdName] {
+			continue
+		}
+
 		totalOrdersAll += sdData.TotalPieces
 
 		for status, statusData := range sdData.StatusData {
-
 			pieces := statusData.Pieces
 
 			switch status {
@@ -270,8 +280,6 @@ func (b *Bot) generateReport(chatID int64) (string, error) {
 
 			}
 		}
-	} else {
-		log.Printf("СД '%s' не найден во втором файле", transitSDName)
 	}
 
 	var total98Orders int
@@ -284,9 +292,11 @@ func (b *Bot) generateReport(chatID int64) (string, error) {
 		}
 	}
 
-	if sdData, ok := secondData[transitSDName]; ok {
-		if statusData, ok := sdData.StatusData["98"]; ok {
-			total98Orders += statusData.Pieces
+	for sdName, sdData := range secondData {
+		if requiredSDsSecond[sdName] {
+			if statusData, ok := sdData.StatusData["98"]; ok {
+				total98Orders += statusData.Pieces
+			}
 		}
 	}
 
@@ -422,19 +432,4 @@ func readExcelFile(path string) (map[string]SDData, error) {
 	}
 
 	return data, nil
-}
-
-func (b *Bot) sendReport(chatID int64) error {
-
-	report, err := b.generateReport(chatID)
-	if err != nil {
-		return fmt.Errorf("ошибка генерации отчёта: %w", err)
-	}
-
-	err = b.SendMessage(TargetChatID, report, tgbotapi.ModeHTML)
-	if err != nil {
-		return fmt.Errorf("ошибка отправки отчёта в чат %d: %w", TargetChatID, err)
-	}
-
-	return nil //
 }
