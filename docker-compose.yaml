@@ -24,7 +24,7 @@ services:
 
   bot:
     build: .
-    image: pablosergeev/telegram-bot-jarvis:latest
+    image: pablosergeev/telegram-bot-jarvis:v1.1.0
     container_name: telegram-bot
     restart: unless-stopped
     environment:
