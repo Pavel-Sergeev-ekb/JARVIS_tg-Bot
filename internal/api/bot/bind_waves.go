@@ -29,7 +29,7 @@ func (b *Bot) getWavesTypeInfo(chatID int64, wavesKey string) error {
 	db, err := database.ConnectDB(cfg)
 	if err != nil {
 		log.Printf("Ошибка подключения к БД: %v", err)
-		b.SendMessage(chatID, "Произошла ошибка при подключении к базе данных", tgbotapi.ModeMarkdown)
+		b.SendMessage(chatID, "Произошла ошибка при подключении к базе данных", tgbotapi.ModeHTML)
 		return err
 	}
 	defer db.Close(context.Background())
@@ -60,7 +60,7 @@ func (b *Bot) getWavesTypeInfo(chatID int64, wavesKey string) error {
 
 	if err != nil {
 		log.Printf("Ошибка при выполнении запроса: %v", err)
-		b.SendMessage(chatID, "Произошла ошибка при получении данных", tgbotapi.ModeMarkdown)
+		b.SendMessage(chatID, "Произошла ошибка при получении данных", tgbotapi.ModeHTML)
 		return err
 	}
 	message := fmt.Sprintf(
@@ -69,7 +69,7 @@ func (b *Bot) getWavesTypeInfo(chatID int64, wavesKey string) error {
 		waves.name,
 		waves.text,
 	)
-	b.SendMessage(chatID, message, tgbotapi.ModeMarkdown)
+	b.SendMessage(chatID, message, tgbotapi.ModeHTML)
 	return nil
 }
 
@@ -96,7 +96,7 @@ func (b *Bot) getBindInfo(chatID int64, wavesKey string) error {
 	db, err := database.ConnectDB(cfg)
 	if err != nil {
 		log.Printf("Ошибка подключения к БД: %v", err)
-		b.SendMessage(chatID, "Произошла ошибка при подключении к базе данных", tgbotapi.ModeMarkdown)
+		b.SendMessage(chatID, "Произошла ошибка при подключении к базе данных", tgbotapi.ModeHTML)
 		return err
 	}
 	defer db.Close(context.Background())
@@ -121,13 +121,13 @@ func (b *Bot) getBindInfo(chatID int64, wavesKey string) error {
 
 	if errors.Is(err, sql.ErrNoRows) {
 		msg := fmt.Sprintf("Операция с кодом %s не найдена", wavesKey)
-		b.SendMessage(chatID, msg, tgbotapi.ModeMarkdown)
+		b.SendMessage(chatID, msg, tgbotapi.ModeHTML)
 		return fmt.Errorf("операция не найдена в базе данных: %w", err)
 	}
 
 	if err != nil {
 		log.Printf("Ошибка при выполнении запроса: %v", err)
-		b.SendMessage(chatID, "Произошла ошибка при получении данных", tgbotapi.ModeMarkdown)
+		b.SendMessage(chatID, "Произошла ошибка при получении данных", tgbotapi.ModeHTML)
 		return err
 	}
 	message := fmt.Sprintf(
@@ -136,7 +136,7 @@ func (b *Bot) getBindInfo(chatID int64, wavesKey string) error {
 		waves.name,
 		waves.bind,
 	)
-	b.SendMessage(chatID, message, tgbotapi.ModeMarkdown)
+	b.SendMessage(chatID, message, tgbotapi.ModeHTML)
 	return nil
 }
 func (b *Bot) PotConsBindInfo(chatID int64, wavesID string) error {

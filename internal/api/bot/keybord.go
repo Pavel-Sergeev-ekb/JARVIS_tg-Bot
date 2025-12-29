@@ -532,3 +532,20 @@ func NewStandardRefreshKeyboard() tgbotapi.InlineKeyboardMarkup {
 		),
 	)
 }
+
+func NewDoorKeyboard() tgbotapi.InlineKeyboardMarkup {
+	return tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Запросить доступ", "access"),
+		),
+	)
+}
+
+func NewApproveKeyboard() tgbotapi.InlineKeyboardMarkup {
+	return tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Разрешить", "approve"),
+			tgbotapi.NewInlineKeyboardButtonData("Отклонить", "reject"),
+		),
+	)
+}

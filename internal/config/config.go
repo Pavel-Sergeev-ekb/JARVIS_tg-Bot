@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 
 	"github.com/joho/godotenv"
 )
@@ -16,6 +17,7 @@ type Config struct {
 	DBHost     string
 	DBPort     string
 	DBName     string
+	MyChatID   int64
 }
 
 var Cfg Config
@@ -42,6 +44,16 @@ func LoadConfig() (Config, error) {
 		DBPort:     os.Getenv("DB_PORT"),
 		DBName:     os.Getenv("DB_NAME"),
 	}
+	myChatIDStr := os.Getenv("MyChatID")
+	if myChatIDStr == "" {
+		return Config{}, fmt.Errorf("MyChatID не задан в окружении")
+	}
+	myChatID, err := strconv.ParseInt(myChatIDStr, 10, 64)
+	if err != nil {
+		return Config{}, fmt.Errorf("некорректный MyChatID: %v", err)
+	}
+	cfg.MyChatID = myChatID
+
 	if cfg.DBHost == "" {
 		cfg.DBHost = "localhost"
 	}

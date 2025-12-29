@@ -35,7 +35,7 @@ func main() {
 
 	// инициализация
 
-	botInstance := bot.NewOneBot(botApi)
+	botInstance := bot.NewOneBot(botApi, db)
 
 	//запрос на получение обновлений
 	u := tgbotapi.NewUpdate(0)
@@ -51,14 +51,9 @@ func main() {
 		switch {
 		case update.Message != nil:
 			botInstance.HandleUpdate(update)
-		case update.CallbackQuery != nil:
-			botInstance.HandleCallbackKeyboard(update.CallbackQuery)
-			botInstance.HandleCallbackOperation(update.CallbackQuery)
-			botInstance.HandleCallbackOrders(update.CallbackQuery)
-			botInstance.HandleCallbackTutorial(update.CallbackQuery)
-			botInstance.HandleCallbackKPI(update.CallbackQuery)
-			botInstance.HandleCallbackStandard(update.CallbackQuery)
 
+		case update.CallbackQuery != nil:
+			botInstance.WrapHandler(botInstance.RouteCallback)(update)
 		}
 	}
 }

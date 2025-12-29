@@ -1,47 +1,16 @@
 package bot
 
 import (
+	"fmt"
 	"log"
+	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/Pavel-Sergeev-ekb/JARVIS_tg-Bot/internal/api/database"
+	"github.com/Pavel-Sergeev-ekb/JARVIS_tg-Bot/internal/config"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
-
-type Bot struct {
-	BotAPI                *tgbotapi.BotAPI
-	waitingForStandInput  map[int64]string
-	waitingForKPIInput    map[int64]string
-	waitingForFirstFile   map[int64]bool
-	waitingForSecondFile  map[int64]bool
-	tempFilePaths         map[int64]map[int]string
-	waitingForNeedInput   map[int64]string
-	needData              map[int64]*NeedReport
-	waitingForStaffCount  map[int64]bool
-	waitingForPickedItems map[int64]bool
-	staffCount            map[int64]int
-	pickedItems           map[int64]int
-}
-
-const TargetChatID int64 = -5016795698
-
-func NewOneBot(botAPI *tgbotapi.BotAPI) *Bot {
-	return &Bot{
-		BotAPI:                botAPI,
-		waitingForKPIInput:    make(map[int64]string),
-		waitingForStandInput:  make(map[int64]string),
-		waitingForFirstFile:   make(map[int64]bool),
-		waitingForSecondFile:  make(map[int64]bool),
-		tempFilePaths:         make(map[int64]map[int]string),
-		waitingForNeedInput:   make(map[int64]string),
-		needData:              make(map[int64]*NeedReport),
-		waitingForStaffCount:  make(map[int64]bool),
-		waitingForPickedItems: make(map[int64]bool),
-		staffCount:            make(map[int64]int),
-		pickedItems:           make(map[int64]int),
-	}
-}
 
 func (b *Bot) HandleUpdate(update tgbotapi.Update) {
 	if update.Message == nil {
@@ -50,7 +19,10 @@ func (b *Bot) HandleUpdate(update tgbotapi.Update) {
 
 	chatID := update.Message.Chat.ID
 
-	// 1. Проверяем состояния вопросов (должны идти первыми!)
+	if b.HandlePublicCommand(update) {
+		return
+	}
+
 	if b.waitingForStaffCount != nil && b.waitingForStaffCount[chatID] {
 		staffCount, err := strconv.Atoi(update.Message.Text)
 		if err != nil {
@@ -90,7 +62,6 @@ func (b *Bot) HandleUpdate(update tgbotapi.Update) {
 		}
 	}
 
-	// 3. Остальная логика (команды, текст и т.д.)
 	text := update.Message.Text
 	stage, isWaiting := b.waitingForNeedInput[chatID]
 	if isWaiting {
@@ -113,7 +84,7 @@ func (b *Bot) HandleUpdate(update tgbotapi.Update) {
 	}
 
 	if update.Message.IsCommand() {
-		b.handleCommand(chatID, update.Message)
+		b.handleCommand(chatID, update)
 		return
 	}
 
@@ -121,22 +92,44 @@ func (b *Bot) HandleUpdate(update tgbotapi.Update) {
 	b.HandleTextMessage(chatID, text)
 }
 
-func (b *Bot) handleCommand(chatID int64, msg *tgbotapi.Message) {
+func (b *Bot) handleCommand(chatID int64, update tgbotapi.Update) {
+	if update.Message == nil || update.Message.Text == "" {
+		return
+	}
 
-	switch {
-	case msg != nil && msg.Command() == "start":
-		b.StartCommand(msg)
-	case (msg != nil && msg.Command() == "hourlyReport") || msg == nil:
-		// Инициализируем состояния
-		if b.waitingForStaffCount == nil {
-			b.waitingForStaffCount = make(map[int64]bool)
-		}
-		if b.waitingForPickedItems == nil {
-			b.waitingForPickedItems = make(map[int64]bool)
-		}
+	msg := update.Message
 
+	if b.waitingForStaffCount == nil {
+		b.waitingForStaffCount = make(map[int64]bool)
+	}
+	if b.waitingForPickedItems == nil {
+		b.waitingForPickedItems = make(map[int64]bool)
+	}
+
+	switch msg.Command() {
+
+	case "start":
+		b.StartCommand(update)
+
+	case "hourlyReport":
+		hasAccess, err := b.CheckAccess(chatID)
+		if err != nil {
+			log.Printf("Ошибка проверки доступа для chat_id=%d: %v", chatID, err)
+			b.SendMessage(chatID, "Ошибка проверки доступа. Попробуйте позже.", tgbotapi.ModeHTML)
+			return
+		}
+		if !hasAccess {
+			b.SendMessage(chatID, "Доступ запрещен, пройдите верификацию через команду /start", tgbotapi.ModeHTML)
+			log.Printf("Отказ в доступе для chat_id=%d при команде /hourlyReport", chatID)
+			return
+		}
 		b.waitingForStaffCount[chatID] = true
 		b.SendMessage(chatID, "Укажите количество сотрудников на потоке:", tgbotapi.ModeHTML)
+		return
+
+	default:
+
+		log.Printf("Неизвестная команда: %s", msg.Text)
 	}
 }
 
@@ -166,26 +159,72 @@ func (b *Bot) SendMessage(chatID int64, text string, parseMode string) error {
 	return err
 }
 
-func (b *Bot) StartCommand(msg *tgbotapi.Message) {
-	// Формируем приветственное сообщение
+func (b *Bot) StartCommand(update tgbotapi.Update) {
+	// 1. Проверяем наличие сообщения
+	if update.Message == nil {
+		return
+	}
+
+	msg := update.Message
+	chatID := msg.Chat.ID
+	user := msg.From
+
+	err := database.SaveUser(chatID, user.UserName, false)
+	if err != nil {
+		log.Printf("Ошибка создания пользователя chat_id=%d: %v", chatID, err)
+		b.SendMessage(chatID, "Ошибка инициализации. Попробуйте позже.", tgbotapi.ModeHTML)
+		return
+	}
+
+	// 2. Формируем приветственное сообщение
 	text := "Привет, командир!\n" +
-		"Я —  бот J.A.R.V.I.S (Джарвис)...\n" +
+		"Я — бот J.A.R.V.I.S (Джарвис)...\n" +
 		"Я создан для помощи в обучении и адаптации, помогу сформировать часовой отчет, расскажу о текущих нормативах и ключевых показателях и еще очень и очень много всего полезного \n" +
 		"Приступим?"
 
-	// Отправляем приветственное сообщение
+	// 3. Отправляем приветственное сообщение
 	b.SendMessage(msg.Chat.ID, text, tgbotapi.ModeHTML)
 
-	// Сохраняем пользователя в БД
-	err := database.SaveUser(msg.Chat.ID, msg.From.UserName)
+	err = b.RequestAccess(msg.Chat.ID, msg.From)
 	if err != nil {
-		// Логируем ошибку (можно также отправить уведомление пользователю)
-		log.Printf("Ошибка сохранения пользователя chat_id=%d, user_name=%s: %v",
-			msg.Chat.ID, msg.From.UserName, err)
-
-		// Опционально: уведомляем пользователя о проблеме
-		b.SendMessage(msg.Chat.ID, "Произошла ошибка при сохранении ваших данных. Попробуйте позже.", tgbotapi.ModeHTML)
+		log.Printf("Ошибка запроса доступа для chat_id=%d: %v", msg.Chat.ID, err)
+		b.SendMessage(msg.Chat.ID, "Не удалось отправить запрос на доступ. Попробуйте позже.", tgbotapi.ModeHTML)
+		return // Завершаем выполнение при ошибке
 	}
+
+	// 5. Подтверждаем отправку заявки
+	b.SendMessage(msg.Chat.ID, "Ваша заявка на доступ отправлена. Ожидайте решения владельца.", tgbotapi.ModeHTML)
+}
+
+func (b *Bot) RequestAccess(chatID int64, user *tgbotapi.User) error {
+	// 1. Сохраняем заявку в БД
+	err := database.SaveAccessRequest(b.Conn, chatID, user.UserName)
+	if err != nil {
+		return fmt.Errorf("ошибка сохранения заявки: %w", err)
+	}
+
+	// 2. Отправляем уведомление владельцу
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return fmt.Errorf("ошибка загрузки конфигурации: %w", err)
+	}
+
+	ownerMsg := fmt.Sprintf(
+		"Запрос доступа от @%s (ID: %d)\n"+
+			"Имя: %s %s\n"+
+			"Нажмите кнопку ниже, чтобы одобрить или отклонить:",
+		user.UserName, chatID, user.FirstName, user.LastName)
+
+	keyboard := NewApproveKeyboard()
+
+	msgToOwner := tgbotapi.NewMessage(cfg.MyChatID, ownerMsg)
+	msgToOwner.ReplyMarkup = keyboard
+	_, err = b.BotAPI.Send(msgToOwner)
+	if err != nil {
+		return fmt.Errorf("ошибка отправки уведомления владельцу: %w", err)
+	}
+
+	return nil
 }
 
 func (b *Bot) DefaultCommand(chatID int64, t string) {
@@ -209,7 +248,13 @@ func (b *Bot) HandleTextMessage(chatID int64, text string) {
 	}
 }
 
-func (b *Bot) HandleCallbackKeyboard(callback *tgbotapi.CallbackQuery) {
+func (b *Bot) HandleCallbackKeyboard(update tgbotapi.Update) {
+
+	if update.CallbackQuery == nil {
+		return
+	}
+
+	callback := update.CallbackQuery
 	chatID := callback.Message.Chat.ID
 
 	switch callback.Data {
@@ -362,7 +407,14 @@ func (b *Bot) HandleCallbackKeyboard(callback *tgbotapi.CallbackQuery) {
 	}
 }
 
-func (b *Bot) HandleCallbackOperation(callback *tgbotapi.CallbackQuery) {
+func (b *Bot) HandleCallbackOperation(update tgbotapi.Update) {
+
+	if update.CallbackQuery == nil {
+		return
+	}
+
+	callback := update.CallbackQuery
+
 	chatID := callback.Message.Chat.ID
 
 	switch callback.Data {
@@ -513,7 +565,13 @@ func (b *Bot) HandleCallbackOperation(callback *tgbotapi.CallbackQuery) {
 
 }
 
-func (b *Bot) HandleCallbackOrders(callback *tgbotapi.CallbackQuery) {
+func (b *Bot) HandleCallbackOrders(update tgbotapi.Update) {
+
+	if update.CallbackQuery == nil {
+		return // или логирование ошибки
+	}
+
+	callback := update.CallbackQuery
 	chatID := callback.Message.Chat.ID
 
 	switch callback.Data {
@@ -579,7 +637,14 @@ func (b *Bot) HandleCallbackOrders(callback *tgbotapi.CallbackQuery) {
 
 }
 
-func (b *Bot) HandleCallbackTutorial(callback *tgbotapi.CallbackQuery) {
+func (b *Bot) HandleCallbackTutorial(update tgbotapi.Update) {
+
+	if update.CallbackQuery == nil {
+		return
+	}
+
+	callback := update.CallbackQuery
+
 	chatID := callback.Message.Chat.ID
 
 	switch callback.Data {
@@ -865,7 +930,14 @@ func (b *Bot) HandleCallbackTutorial(callback *tgbotapi.CallbackQuery) {
 	}
 }
 
-func (b *Bot) HandleCallbackKPI(callback *tgbotapi.CallbackQuery) {
+func (b *Bot) HandleCallbackKPI(update tgbotapi.Update) {
+
+	if update.CallbackQuery == nil {
+		return
+	}
+
+	callback := update.CallbackQuery
+
 	chatID := callback.Message.Chat.ID
 
 	switch callback.Data {
@@ -993,7 +1065,14 @@ func (b *Bot) HandleCallbackKPI(callback *tgbotapi.CallbackQuery) {
 	}
 }
 
-func (b *Bot) HandleCallbackStandard(callback *tgbotapi.CallbackQuery) {
+func (b *Bot) HandleCallbackStandard(update tgbotapi.Update) {
+
+	if update.CallbackQuery == nil {
+		return
+	}
+
+	callback := update.CallbackQuery
+
 	chatID := callback.Message.Chat.ID
 
 	switch callback.Data {
@@ -1136,5 +1215,83 @@ func (b *Bot) HandleCallbackStandard(callback *tgbotapi.CallbackQuery) {
 
 	case "selectionBalkonUP":
 		b.HandleUpdateButtonStan(chatID, "Отбор КГТ Балкон")
+	}
+}
+
+func (b *Bot) HandleAccessCallback(update tgbotapi.Update) {
+
+	if update.CallbackQuery == nil {
+		return // или логирование ошибки
+	}
+
+	callback := update.CallbackQuery
+
+	chatID := callback.Message.Chat.ID
+	data := callback.Data
+
+	switch {
+	case data == "access":
+		// Пользователь запрашивает доступ
+		err := b.RequestAccess(chatID, callback.From)
+		if err != nil {
+			log.Printf("Ошибка запроса доступа для chatID=%d: %v", chatID, err)
+		}
+
+	case data == "approve":
+		// Владелец одобряет заявку
+		userID, err := b.extractUserIDFromMessage(callback.Message)
+		if err != nil {
+			log.Printf("Не удалось извлечь userID из сообщения: %v", err)
+			return
+		}
+		err = b.ApproveUser(b.Conn, userID, callback.From.UserName)
+		if err != nil {
+			log.Printf("Ошибка одобрения заявки для userID=%d: %v", userID, err)
+		}
+
+	case data == "reject":
+		// Владелец отклоняет заявку
+		userID, err := b.extractUserIDFromMessage(callback.Message)
+		if err != nil {
+			log.Printf("Не удалось извлечь userID из сообщения: %v", err)
+			return
+		}
+		err = b.RejectUser(b.Conn, userID, callback.From.UserName)
+		if err != nil {
+			log.Printf("Ошибка отклонения заявки для userID=%d: %v", userID, err)
+		}
+
+	default:
+		log.Printf("Неизвестный callback_data: %s", data)
+	}
+}
+
+func (b *Bot) extractUserIDFromMessage(msg *tgbotapi.Message) (int64, error) {
+	// Регулярное выражение для поиска "ID: <число>"
+	re := regexp.MustCompile(`ID:\s*(\d+)`)
+	matches := re.FindStringSubmatch(msg.Text)
+
+	if len(matches) < 2 {
+		return 0, fmt.Errorf("не найден ID пользователя в сообщении: %q", msg.Text)
+	}
+
+	userID, err := strconv.ParseInt(matches[1], 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("ошибка парсинга ID из сообщения: %v", err)
+	}
+
+	return userID, nil
+}
+func (b *Bot) HandlePublicCommand(update tgbotapi.Update) bool {
+	if update.Message == nil || update.Message.IsCommand() {
+		return false
+	}
+
+	switch update.Message.Text {
+	case "/start":
+		b.StartCommand(update)
+		return true // Команда обработана
+	default:
+		return false // Не наша команда
 	}
 }
