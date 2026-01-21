@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Pavel-Sergeev-ekb/JARVIS_tg-Bot/internal/config"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/tealeg/xlsx"
 )
@@ -52,6 +53,13 @@ type SDData struct {
 }
 
 func (b *Bot) HandleFileUpload(chatID int64, doc *tgbotapi.Document) {
+
+	if b.waitingForFile == nil || !b.waitingForFile[chatID] {
+		b.SendMessage(chatID, "Файл получен, но не ожидается. Используй команду <b>/hourlyReport</b> для запуска отчета.", tgbotapi.ModeHTML)
+		os.Remove(filepath.Join(os.TempDir(), doc.FileID+filepath.Ext(doc.FileName)))
+		return
+	}
+
 	ext := filepath.Ext(doc.FileName)
 	if ext != ".xlsx" && ext != ".xls" {
 		b.SendMessage(chatID, "Поддерживаются только файлы .xlsx и .xls", tgbotapi.ModeHTML)
@@ -87,39 +95,51 @@ func (b *Bot) HandleFileUpload(chatID int64, doc *tgbotapi.Document) {
 		return
 	}
 
-	if b.tempFilePaths[chatID] == nil {
-		b.tempFilePaths[chatID] = make(map[int]string)
-	}
-
-	if b.waitingForFirstFile[chatID] {
-		b.tempFilePaths[chatID][0] = tempPath
-		b.waitingForFirstFile[chatID] = false
-		b.waitingForSecondFile[chatID] = true
-		b.SendMessage(chatID, "Первый файл получен. Отправьте второй Excel-файл.", tgbotapi.ModeHTML)
-	} else if b.waitingForSecondFile[chatID] {
-		b.tempFilePaths[chatID][1] = tempPath
-		b.waitingForSecondFile[chatID] = false
-
-		report, err := b.generateReport(chatID)
-		if err != nil {
-			log.Printf("Ошибка формирования отчёта: %v", err)
-			b.SendMessage(chatID, "Ошибка при обработке файлов", tgbotapi.ModeHTML)
-		} else {
-			b.SendMessage(chatID, report, tgbotapi.ModeHTML)
+	if b.tempFilePaths[chatID] != nil {
+		for _, oldPath := range b.tempFilePaths[chatID] {
+			os.Remove(oldPath)
 		}
-
 		delete(b.tempFilePaths, chatID)
-		delete(b.waitingForFirstFile, chatID)
-		delete(b.waitingForSecondFile, chatID)
-		delete(b.waitingForStaffCount, chatID)
-		delete(b.waitingForPickedItems, chatID)
-		delete(b.staffCount, chatID)
-		delete(b.pickedItems, chatID)
-	} else {
-
-		b.SendMessage(chatID, "Файл получен, но не ожидается. Используйте команду <b>/hourlyReport</b> для начала загрузки.", tgbotapi.ModeHTML)
-		os.Remove(tempPath)
 	}
+
+	b.tempFilePaths[chatID] = make(map[int]string)
+	b.tempFilePaths[chatID][0] = tempPath
+
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		log.Printf("ошибка загрузки конфигурации: %v", err)
+		return
+	}
+
+	report, err := b.generateReport(chatID)
+	if err != nil {
+		log.Printf("Ошибка формирования отчёта: %v", err)
+		b.SendMessage(chatID, "Ошибка при обработке файлов", tgbotapi.ModeHTML)
+		return
+	}
+
+	if err := b.SendMessage(chatID, "Отчет сформирован и отправлен в группу 'Отчеты участков ЕКБ'", tgbotapi.ModeHTML); err != nil {
+		log.Printf("Ошибка отправки отчёта пользователю %d: %v", chatID, err)
+	} else {
+		log.Printf("Отчёт успешно отправлен пользователю %d", chatID)
+	}
+
+	if cfg.TargetChatID != 0 {
+		if err := b.SendMessage(cfg.TargetChatID, report, tgbotapi.ModeHTML); err != nil {
+			log.Printf("Ошибка отправки отчёта в чат %d: %v", cfg.TargetChatID, err)
+		} else {
+			log.Printf("Отчёт отправлен в чат %d", cfg.TargetChatID)
+		}
+	}
+
+	os.Remove(tempPath)
+	delete(b.tempFilePaths, chatID)
+	delete(b.waitingForFile, chatID)
+	delete(b.waitingForStaffCount, chatID)
+	delete(b.waitingForPickedItems, chatID)
+	delete(b.staffCount, chatID)
+	delete(b.pickedItems, chatID)
+
 }
 
 func downloadFile(url, filepath string) error {
@@ -179,17 +199,9 @@ func buildStatusInfoMap(sheet *xlsx.Sheet, statusCols map[string]int) (map[strin
 }
 
 func (b *Bot) generateReport(chatID int64) (string, error) {
-	firstPath, ok1 := b.tempFilePaths[chatID][0]
-	secondPath, ok2 := b.tempFilePaths[chatID][1]
-	if !ok1 || !ok2 {
-		return "", fmt.Errorf("не все файлы загружены")
-	}
+	firstPath, _ := b.tempFilePaths[chatID][0]
 
 	firstData, err := readExcelFile(firstPath)
-	if err != nil {
-		return "", err
-	}
-	secondData, err := readExcelFile(secondPath)
 	if err != nil {
 		return "", err
 	}
@@ -201,25 +213,25 @@ func (b *Bot) generateReport(chatID int64) (string, error) {
 	}
 
 	// Список нужных СД
-	requiredSDsFirst := map[string]bool{
-		"DPD region":         true,
-		"СЦ МК Екатеринбург": true,
-		"5Post":              true,
-	}
-	requiredSDsSecond := map[string]bool{
-		"СЦ Москва транзит":          true,
-		"СЦ Пермь транзит":           true,
-		"СЦ Челябинск транзит":       true,
-		"СЦ Тюмень транзит":          true,
-		"СЦ Омск транзит":            true,
-		"СЦ Новосибирск транзит":     true,
+	requiredSDs := map[string]bool{
+		"СЦ МК Дзержинский DS":       true,
+		"СЦ Пермь (Новый)":           true,
+		"СЦ МК Челябинск":            true,
+		"СЦ Тюмень":                  true,
+		"DPD region":                 true,
+		"СЦ Новосибирск (NEW)":       true,
+		"СЦ Омск (Новый)":            true,
+		"СЦ МК Екатеринбург":         true,
+		"5Post":                      true,
 		"СЦ МК Екатеринбург транзит": true,
 	}
 
-	var totalOrdersAll int // Общее количество заказов по выбранным СД
+	var totalOrdersAll int // Общее количество заказов повыбранным СД
+
+	var total98Orders int // отмены
 
 	for sdName, sdData := range firstData {
-		if !requiredSDsFirst[sdName] {
+		if !requiredSDs[sdName] {
 			continue
 		}
 
@@ -244,58 +256,8 @@ func (b *Bot) generateReport(chatID int64) (string, error) {
 			case "68", "95":
 				report.TotalProcessed += pieces
 			case "98":
-
-			}
-		}
-	}
-
-	for sdName, sdData := range secondData {
-		if !requiredSDsSecond[sdName] {
-			continue
-		}
-
-		totalOrdersAll += sdData.TotalPieces
-
-		for status, statusData := range sdData.StatusData {
-			pieces := statusData.Pieces
-
-			switch status {
-			case "-1":
-				report.UnknownCount += pieces
-			case "-3":
-				report.BacklogReplenishment += pieces
-			case "02", "29", "52":
-				report.BacklogPickup += pieces
-				report.BacklogPickupKGT += statusData.KGT
-
-			case "55", "59", "61":
-				report.BacklogPacking += pieces
-				report.BacklogPackingKGT += statusData.KGT
-
-			case "65":
-				report.BacklogSorting += pieces
-			case "68", "95":
-				report.TotalProcessed += pieces
-			case "98":
-
-			}
-		}
-	}
-
-	var total98Orders int
-
-	for sdName, sdData := range firstData {
-		if requiredSDsFirst[sdName] {
-			if statusData, ok := sdData.StatusData["98"]; ok {
 				total98Orders += statusData.Pieces
-			}
-		}
-	}
 
-	for sdName, sdData := range secondData {
-		if requiredSDsSecond[sdName] {
-			if statusData, ok := sdData.StatusData["98"]; ok {
-				total98Orders += statusData.Pieces
 			}
 		}
 	}

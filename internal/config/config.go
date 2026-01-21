@@ -11,13 +11,14 @@ import (
 )
 
 type Config struct {
-	BotToken   string
-	DBUser     string
-	DBPassword string
-	DBHost     string
-	DBPort     string
-	DBName     string
-	MyChatID   int64
+	BotToken     string
+	DBUser       string
+	DBPassword   string
+	DBHost       string
+	DBPort       string
+	DBName       string
+	MyChatID     int64
+	TargetChatID int64
 }
 
 var Cfg Config
@@ -53,6 +54,16 @@ func LoadConfig() (Config, error) {
 		return Config{}, fmt.Errorf("некорректный MyChatID: %v", err)
 	}
 	cfg.MyChatID = myChatID
+
+	TargetChatIDStr := os.Getenv("TargetChatID")
+	if myChatIDStr == "" {
+		return Config{}, fmt.Errorf("MyChatID не задан в окружении")
+	}
+	TargetChatID, err := strconv.ParseInt(TargetChatIDStr, 10, 64)
+	if err != nil {
+		return Config{}, fmt.Errorf("некорректный TargetChatIDStr: %v", err)
+	}
+	cfg.TargetChatID = TargetChatID
 
 	if cfg.DBHost == "" {
 		cfg.DBHost = "localhost"

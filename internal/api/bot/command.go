@@ -45,19 +45,18 @@ func (b *Bot) HandleUpdate(update tgbotapi.Update) {
 		b.pickedItems[chatID] = pickedItems
 		b.waitingForPickedItems[chatID] = false
 
-		b.waitingForFirstFile[chatID] = true
-		b.SendMessage(chatID, "Отправьте первый Excel‑файл Точек Контроля", tgbotapi.ModeHTML)
+		b.waitingForFile[chatID] = true
+		b.SendMessage(chatID, "Загрузи Excel‑файл Точек Контроля\nПримечание:\nПоставь галочку на КГТ в точках контроля для корректного отображения КГТ заказов", tgbotapi.ModeHTML)
 		return
 	}
 
 	// 2. Обрабатываем файлы только если ждём их
 	if update.Message.Document != nil {
-		if (b.waitingForFirstFile != nil && b.waitingForFirstFile[chatID]) ||
-			(b.waitingForSecondFile != nil && b.waitingForSecondFile[chatID]) {
+		if b.waitingForFile != nil && b.waitingForFile[chatID] {
 			b.HandleFileUpload(chatID, update.Message.Document)
 			return
 		} else {
-			b.SendMessage(chatID, "Файл получен, но не ожидается. Используйте /hourlyReport для начала.", tgbotapi.ModeHTML)
+			b.SendMessage(chatID, "Файл получен, но не ожидается. Используй команду /hourlyReport для запуска отчета.", tgbotapi.ModeHTML)
 			return
 		}
 	}
@@ -88,7 +87,6 @@ func (b *Bot) HandleUpdate(update tgbotapi.Update) {
 		return
 	}
 
-	b.SendGreetingKeyboard(chatID)
 	b.HandleTextMessage(chatID, text)
 }
 
@@ -111,7 +109,10 @@ func (b *Bot) handleCommand(chatID int64, update tgbotapi.Update) {
 	case "start":
 		b.StartCommand(update)
 
-	case "hourlyReport":
+	case "menu":
+		b.SendGreetingKeyboard(chatID)
+
+	case "hourlyreport":
 		hasAccess, err := b.CheckAccess(chatID)
 		if err != nil {
 			log.Printf("Ошибка проверки доступа для chat_id=%d: %v", chatID, err)
@@ -120,7 +121,7 @@ func (b *Bot) handleCommand(chatID int64, update tgbotapi.Update) {
 		}
 		if !hasAccess {
 			b.SendMessage(chatID, "Доступ запрещен, пройдите верификацию через команду /start", tgbotapi.ModeHTML)
-			log.Printf("Отказ в доступе для chat_id=%d при команде /hourlyReport", chatID)
+			log.Printf("Отказ в доступе для chat_id=%d при команде /hourlyreport", chatID)
 			return
 		}
 		b.waitingForStaffCount[chatID] = true
@@ -297,7 +298,7 @@ func (b *Bot) HandleCallbackKeyboard(update tgbotapi.Update) {
 		msg.ReplyMarkup = NewWMSMenu()
 		b.BotAPI.Send(msg)
 
-	case "hourlyReport":
+	case "hourlyreport":
 		if b.waitingForStaffCount == nil {
 			b.waitingForStaffCount = make(map[int64]bool)
 		}

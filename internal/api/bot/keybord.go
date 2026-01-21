@@ -39,7 +39,7 @@ func NewLinkMenu() tgbotapi.InlineKeyboardMarkup {
 func NewReplyMenu() tgbotapi.InlineKeyboardMarkup {
 	return tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Часовой отчет", "hourlyReport"),
+			tgbotapi.NewInlineKeyboardButtonData("Часовой отчет", "hourlyreport"),
 			tgbotapi.NewInlineKeyboardButtonData("Своевременность", "timeliness"),
 		),
 		tgbotapi.NewInlineKeyboardRow(

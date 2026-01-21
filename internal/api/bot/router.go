@@ -9,8 +9,7 @@ type Bot struct {
 	BotAPI                *tgbotapi.BotAPI
 	waitingForStandInput  map[int64]string
 	waitingForKPIInput    map[int64]string
-	waitingForFirstFile   map[int64]bool
-	waitingForSecondFile  map[int64]bool
+	waitingForFile        map[int64]bool
 	tempFilePaths         map[int64]map[int]string
 	waitingForNeedInput   map[int64]string
 	needData              map[int64]*NeedReport
@@ -29,8 +28,7 @@ func NewOneBot(botAPI *tgbotapi.BotAPI, conn *pgx.Conn) *Bot {
 		Conn:                  conn,
 		waitingForKPIInput:    make(map[int64]string),
 		waitingForStandInput:  make(map[int64]string),
-		waitingForFirstFile:   make(map[int64]bool),
-		waitingForSecondFile:  make(map[int64]bool),
+		waitingForFile:        make(map[int64]bool),
 		tempFilePaths:         make(map[int64]map[int]string),
 		waitingForNeedInput:   make(map[int64]string),
 		needData:              make(map[int64]*NeedReport),
@@ -162,6 +160,7 @@ func NewOneBot(botAPI *tgbotapi.BotAPI, conn *pgx.Conn) *Bot {
 		"dispatchZRU":      "HandleCallbackKPI",
 		"dispatchRU":       "HandleCallbackKPI",
 		"refresh1":         "HandleCallbackKPI",
+		"refresh":          "HandleCallbackKPI",
 		"dispatchUpZRU":    "HandleCallbackKPI",
 		"dispatchUpRU":     "HandleCallbackKPI",
 		"vpKPI":            "HandleCallbackKPI",
